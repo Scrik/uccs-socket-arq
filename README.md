@@ -1,5 +1,4 @@
-CS5220 Project 2: Socket-based ARQ Protocol Programming
-#######################################################
+# CS5220 Project 2: Socket-based ARQ Protocol Programming
 
 ## 3.1. A file server in TCP
 
