@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+ #include <stdio.h>
 
 #define SERVER_PORT 12345		/* arbitrary, but client and server must agree */
 #define BUF_SIZE 4096			/* block transfer size */
@@ -35,12 +36,17 @@ int main(int argc, char **argv)
   /* Connection is now established. Send file name including 0 byte at end. */
   write(s, argv[2], strlen(argv[2])+1);
 
-  /* Go get the file and write it to standard output. */
+  /* Go get the file and write it to a local file 
+     (new or existing, overwritten) of the same name. */
+  FILE *dst;
+  dst = fopen(argv[2], "w+");
   while (1) {
         bytes = read(s, buf, BUF_SIZE);	/* read from socket */
         if (bytes <= 0) exit(0);	/* check for end of file */
-        write(1, buf, bytes);		/* write to standard output */
+        fwrite(buf, sizeof(char), bytes, dst);
+        // write(1, buf, bytes);		/* write to standard output */
   }
+  fclose(dst);
 }
 
 fatal(char *string)
