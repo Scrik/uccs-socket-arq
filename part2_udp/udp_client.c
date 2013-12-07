@@ -25,15 +25,15 @@ long delay(struct timeval t1, struct timeval t2)
 void print_usage(char *pname)
 {
   fprintf(stderr,
-  "Usage: %s [-s data_size] host ((not implemented: filename protocol))\n\
-   protocol: 1=Stop-and-Wait, 2=Go Back N, 3=Selective Repeat\n", pname);
+  "Usage: %s [-s data_size] host [-p port] filename protocol\n\
+   protocol: 0=Basic, 1=Stop-and-Wait, 2=Go Back N, 3=Selective Repeat\n", pname);
 }
 
 int main(int argc, char **argv)
 {
-    int     data_size = DEFLEN, port = SERVER_UDP_PORT;
+    int     data_size = DEFLEN, port = SERVER_UDP_PORT, protocol;
     int     i, j, sd, server_len;
-    char    *pname, *host, rbuf[MAXLEN], sbuf[MAXLEN];
+    char    *pname, *host, *filename, rbuf[MAXLEN], sbuf[MAXLEN];
     struct  hostent         *hp;
     struct  sockaddr_in     server;
     struct  timeval         start, end;
@@ -53,12 +53,26 @@ int main(int argc, char **argv)
     }
     if (argc > 0) {
        host = *argv;
-       if (--argc > 0)
+       if (--argc > 0) {
+        if(strcmp(*argv, "-p") == 0)
           port = atoi(*++argv);
+       } else {
+        print_usage(pname);
+        exit(1);
+       }
+       if(argc == 2) {
+        filename = *++argv;
+        protocol = atoi(*++argv);
+       } else {
+        print_usage(pname);
+        exit(1);
+       }
     } else {
        print_usage(pname);
        exit(1);
     }
+
+    printf("START host=%s, port=%d, filename=%s, protocol=%d\n", host, port, filename, protocol);
 
     if ((sd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
        fprintf(stderr, "Can't create a socket\n");

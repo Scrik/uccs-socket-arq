@@ -22,7 +22,7 @@ PID_S=$!
 # Run the client, which will hit the server with a datagram and expect it back
 # Meanwhile, the server randomly drops packets, so it will randomly fail
 echo "================ Should see [SUCCESS]/[FAILURE] ================"
-./client.o -s 20 $(hostname) 
+./client.o -s 20 $(hostname) README.md 0
 echo "================================================================"
 
 # Cleanup
