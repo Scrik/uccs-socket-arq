@@ -14,6 +14,19 @@
 #define MAXLEN             4096
 
 /**
+ * Frame 0's data will simply be an int, the number of Frames that will be sent
+ **/
+struct frame
+{
+   uint32_t seq;
+   char data[MAXLEN];
+};
+struct ack
+{
+   uint32_t seq;
+};
+
+/**
  * Implement the Stop-and-Wait ARQ protocol
  *
  * Send and receiver work on one frame at a time,
@@ -24,7 +37,7 @@
 int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n, int dropRate)
 {
 
-   printf("START [BASIC] Sending datagram...\n");
+   printf("START [S-a-W] Sending datagram...\n");
    printf("   CLIENT => client_len=%d, n=%d\n", client_len, n);
 
    // Modify the buffer to simulate dropped packets
@@ -33,12 +46,31 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                // j: index of new buffer
                // r: random number deciding whether to drop packet
    char droppedBuf[n];
+   struct frame a_frame;
+
+   // printf("   START Send info packet, saying ");
+
    printf("   START iterating over packets! BufIn.len = %d\n", n);
    printf("      ");
    for(i=0, j=0; i < n; i++) {
       r = 1 + (rand() % 100); // range of 1-100
-      printf("(%2d)", i);
+      printf("      FRAME %3d\n", i);
+
       if( r > dropRate ) {
+
+         a_frame.seq = i;
+         printf("memcpy\n");
+         memcpy(a_frame.data, (buf+i), MAXLEN);
+         // memcpy(a_frame.data, (buf+ci), packet.len);
+
+         printf("send\n");
+         // Send the packet
+         if ( n = sendto(sd, &a_frame, sizeof(a_frame), 0, 
+         (struct sockaddr *)&client, client_len)) {
+               fprintf(stderr, "END [FAILURE] Frame send error\n");
+               return 1;
+         }
+
       // if( i%2 == 0 ) {
          printf(".");
          // Don't drop the packet
