@@ -60,7 +60,7 @@ int main(int argc, char **argv)
             continue;
       }
 
-      sendStopAndWait(client_len, client, sd, buf, n);
+      send_udp(client_len, client, sd, buf, n);
    }
    close(sd);
    return(0);
