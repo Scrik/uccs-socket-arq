@@ -21,6 +21,14 @@ long delay(struct timeval t1, struct timeval t2)
    d += ((t2.tv_usec - t1.tv_usec + 500) / 1000);
    return(d);
 }
+
+void print_usage(char *pname)
+{
+  fprintf(stderr,
+  "Usage: %s [-s data_size] host filename protocol\n\
+   protocol: 1=Stop-and-Wait, 2=Go Back N, 3=Selective Repeat\n", pname);
+}
+
 int main(int argc, char **argv)
 {
     int     data_size = DEFLEN, port = SERVER_UDP_PORT;
@@ -39,8 +47,7 @@ int main(int argc, char **argv)
           argc--;
           argv++;
        } else {
-          fprintf(stderr,
-          "Usage: %s [-s data_size] host [port]\n", pname);
+          print_usage(pname);
           exit(1);
        }
     }
@@ -49,8 +56,7 @@ int main(int argc, char **argv)
        if (--argc > 0)
           port = atoi(*++argv);
     } else {
-       fprintf(stderr,
-       "Usage: %s [-s data_size] host [port]\n", pname);
+       print_usage(pname);
        exit(1);
     }
 
