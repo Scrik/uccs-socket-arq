@@ -8,7 +8,7 @@
 #include "udp_stop-and-wait.h"
 
 #define SERVER_UDP_PORT    5000
-#define MAXLEN             4096
+#define MAXLEN             1024
 
 void print_usage(char *pname)
 {

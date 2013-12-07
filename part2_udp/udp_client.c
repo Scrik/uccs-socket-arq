@@ -12,7 +12,7 @@
 #include "udp_stop-and-wait.h"
 
 #define SERVER_UDP_PORT         5000
-#define MAXLEN                  4096
+#define MAXLEN                  1024
 #define BUF_SIZE                4096     /* block transfer size */
 #define DEFLEN                  64
 
@@ -169,6 +169,7 @@ int main(int argc, char **argv)
     // printf("   START Send data at %s\n", start);
 
     server_len = sizeof(server);
+    
     if (sendto(sd, sbuf, data_size, 0, (struct sockaddr *)
        &server, server_len) == -1) {
        fprintf(stderr, "sendto error\n");

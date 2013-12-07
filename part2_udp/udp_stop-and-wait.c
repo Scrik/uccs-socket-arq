@@ -11,7 +11,7 @@
 #include "udp_stop-and-wait.h"
 
 #define SERVER_UDP_PORT    5000
-#define MAXLEN             4096
+#define MAXLEN             1024
 
 /**
  * Frame 0's data will simply be an int, the number of Frames that will be sent
@@ -59,25 +59,24 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
       if( r > dropRate ) {
 
          a_frame.seq = i;
-         printf("memcpy\n");
+         // printf("         START memcpy\n");
          memcpy(a_frame.data, (buf+i), MAXLEN);
-         // memcpy(a_frame.data, (buf+ci), packet.len);
+         // printf("         END memcpy\n");
 
-         printf("send\n");
-         // Send the packet
-         if ( n = sendto(sd, &a_frame, sizeof(a_frame), 0, 
-         (struct sockaddr *)&client, client_len)) {
-               fprintf(stderr, "END [FAILURE] Frame send error\n");
-               return 1;
+         printf("         START Send frame %3d\n", i);
+         // Send the frame
+         n = sendto(sd, &a_frame, sizeof(a_frame), 0, 
+         (struct sockaddr *)&client, client_len);
+         if(n == -1) {
+            fprintf(stderr, "END [FAILURE] Frame send error\n");
+            return 1;
          }
+         printf("         END Sent frame with result: %d\n", n);
 
-      // if( i%2 == 0 ) {
-         printf(".");
-         // Don't drop the packet
          droppedBuf[j] = buf[i];
          j++;
       } else {
-         printf("DROP\n      ");
+         printf("DROP\n");
          // By not copying over the element, we "drop" it
          // DO NOTHING, intentionally
       }
