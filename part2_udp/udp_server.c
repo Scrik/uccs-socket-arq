@@ -74,13 +74,17 @@ int main(int argc, char **argv)
 
    while (1) {
       client_len = sizeof(client);
-      if ((n = recvfrom(sd, buf, MAXLEN, 0, 
-      (struct sockaddr *)&client, &client_len)) < 0) {
-            fprintf(stderr, "END [FAILURE] Can't receive datagram\n");
-            continue;
-      }
 
-      send_udp(client_len, client, sd, buf, n, dropRate);
+   printf("START Receive UDP\n");
+   if ((n = recvfrom(sd, buf, MAXLEN, 0, 
+   (struct sockaddr *)&client, &client_len)) < 0) {
+         fprintf(stderr, "END [FAILURE] Can't receive datagram\n");
+         continue;
+   }
+   printf("END [SUCCESS] Receive UDP\n");
+      // if(!receive_udp(client_len, client, sd, buf, n)) {
+         send_udp(client_len, client, sd, buf, n, dropRate);
+      // }
    }
    close(sd);
    return(0);
