@@ -9,30 +9,50 @@
 
 #define SERVER_UDP_PORT    5000
 #define MAXLEN             4096
-#define DROP_RATE          5     // Out of 100, % chance of dropping
+
+void print_usage(char *pname)
+{
+  fprintf(stderr,
+  "Usage: %s [-p port] drop_rate protocol\n\
+   drop_rate: [0-100], the percent chance of dropping a packet\n\
+   protocol: 0=Basic, 1=Stop-and-Wait, 2=Go Back N, 3=Selective Repeat\n", pname);
+}
 
 int main(int argc, char **argv)
 {
-   int    sd, client_len, port, n;
-   char    buf[MAXLEN];
+   int    sd, client_len, n, port = SERVER_UDP_PORT, dropRate, protocol;
+   char    buf[MAXLEN], *pname;
    struct    sockaddr_in    server, client;
 
    // Seed the random number generator
    srand(time(NULL));
 
-   switch(argc) {
-   case 1:
-      port = SERVER_UDP_PORT;
-      break;
-   case 2:
-      port = atoi(argv[1]);
-      break;
-   default:
-      fprintf(stderr, "Usage: %s [port]\n", argv[0]);
-      exit(1);
-   }
+    pname = argv[0];
+    argc--;
 
-   printf("Using port %d\n", port);
+    if (argc > 0) {
+      printf("argc = %d\n", argc);
+       if(strcmp(*++argv, "-p") == 0) {
+          port = atoi(*++argv);
+          argc -= 2;
+       } else {
+         --argv;
+       }
+      printf("argc = %d\n", argc);
+       if(argc == 2) {
+        dropRate = atoi(*++argv);
+        protocol = atoi(*++argv);
+       } else {
+        print_usage(pname);
+        exit(1);
+       }
+    } else {
+       print_usage(pname);
+       exit(1);
+    }
+
+
+   printf("Using port=%d, drop_rate=%d, protocol=%d\n", port, dropRate, protocol);
       
    /* Create a datagram socket */
    if ((sd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
@@ -60,7 +80,7 @@ int main(int argc, char **argv)
             continue;
       }
 
-      send_udp(client_len, client, sd, buf, n);
+      send_udp(client_len, client, sd, buf, n, dropRate);
    }
    close(sd);
    return(0);

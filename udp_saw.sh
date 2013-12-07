@@ -15,7 +15,7 @@ ls *.o -l
 echo "================================================================"
 
 # Start the server in bkd and get its PID
-./server.o &
+./server.o 1 0 &
 PID_S=$!
 
 # Run the client, which will hit the server with a datagram and expect it back

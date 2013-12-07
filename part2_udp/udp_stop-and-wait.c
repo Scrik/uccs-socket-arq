@@ -12,7 +12,6 @@
 
 #define SERVER_UDP_PORT    5000
 #define MAXLEN             4096
-#define DROP_RATE          1     // Out of 100, % chance of dropping
 
 /**
  * Implement the Stop-and-Wait ARQ protocol
@@ -22,7 +21,7 @@
  *
  * 
  **/
-int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n)
+int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n, int dropRate)
 {
 
    printf("START [BASIC] Sending datagram...\n");
@@ -39,7 +38,7 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    for(i=0, j=0; i < n; i++) {
       r = 1 + (rand() % 100); // range of 1-100
       printf("(%2d)", i);
-      if( r > DROP_RATE ) {
+      if( r > dropRate ) {
       // if( i%2 == 0 ) {
          printf(".");
          // Don't drop the packet
