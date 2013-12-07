@@ -29,13 +29,17 @@ void print_usage(char *pname)
    protocol: 0=Basic, 1=Stop-and-Wait, 2=Go Back N, 3=Selective Repeat\n", pname);
 }
 
-void bufferRandom(char *sbuf, int data_size) {
+int bufferRandom(char *sbuf, int data_size) {
   int i, j;
   for (i = 0; i < data_size; i++) {
      j = (i < 26) ? i : i % 26;
      sbuf[i] = 'a' + j;
   } // construct data to send to the server
-  return;
+  return data_size;
+}
+
+int bufferFile(char *sbuf, char *filename) {
+  return 0;
 }
 
 int main(int argc, char **argv)
@@ -104,7 +108,7 @@ int main(int argc, char **argv)
        exit(1);
     }
 
-    bufferRandom(sbuf, data_size);
+    data_size = bufferRandom(sbuf, data_size);
 
     gettimeofday(&start, NULL); /* start delay measurement */
     server_len = sizeof(server);
