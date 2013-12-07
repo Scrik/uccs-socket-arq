@@ -34,7 +34,7 @@ int main(int argc, char **argv)
       
    /* Create a datagram socket */
    if ((sd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-      fprintf(stderr, "Can't create a socket\n");
+      fprintf(stderr, "END Can't create a socket\n");
       exit(1);
    }
 
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
       client_len = sizeof(client);
       if ((n = recvfrom(sd, buf, MAXLEN, 0, 
       (struct sockaddr *)&client, &client_len)) < 0) {
-            fprintf(stderr, "Can't receive datagram\n");
+            fprintf(stderr, "END Can't receive datagram\n");
             exit(1);
       }
 
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
       int i, j, r;	// i: index of original buffer
       				// j: index of new buffer
       				// r: random number deciding whether to drop packet
-      char droppedBuf[MAXLEN];
+      char droppedBuf[n];
       printf("   START iterating over packets! BufIn.len = %d\n", n);
       printf("      ");
       for(i = 0; i < n; i++) {
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
       if (sendto(sd, droppedBuf, j, 0, 
       (struct sockaddr *)&client, client_len) != n) {
             fprintf(stderr, "END Can't send datagram\n");
-            exit(1);
+            continue;
       } else {
          printf("END Datagram sent\n");
       }
