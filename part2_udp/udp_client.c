@@ -25,7 +25,7 @@ long delay(struct timeval t1, struct timeval t2)
 void print_usage(char *pname)
 {
   fprintf(stderr,
-  "Usage: %s [-s data_size] host filename protocol\n\
+  "Usage: %s [-s data_size] host ((not implemented: filename protocol))\n\
    protocol: 1=Stop-and-Wait, 2=Go Back N, 3=Selective Repeat\n", pname);
 }
 
