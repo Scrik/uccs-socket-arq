@@ -1,7 +1,6 @@
 #!/bin/bash
 echo "========================= make saw ============================" >> 'build.log'
-make saw &>> 'build.log'
-wait $!
+make saw #&>> 'build.log'
 EXIT_CODE=$?
 echo "make exited with code: $EXIT_CODE"
 if [ $EXIT_CODE -ne 0 ]

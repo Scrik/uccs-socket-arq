@@ -29,10 +29,19 @@ void print_usage(char *pname)
    protocol: 0=Basic, 1=Stop-and-Wait, 2=Go Back N, 3=Selective Repeat\n", pname);
 }
 
+void bufferRandom(char *sbuf, int data_size) {
+  int i, j;
+  for (i = 0; i < data_size; i++) {
+     j = (i < 26) ? i : i % 26;
+     sbuf[i] = 'a' + j;
+  } // construct data to send to the server
+  return;
+}
+
 int main(int argc, char **argv)
 {
     int     data_size = DEFLEN, port = SERVER_UDP_PORT, protocol;
-    int     i, j, sd, server_len;
+    int     i, sd, server_len;
     char    *pname, *host, *filename, rbuf[MAXLEN], sbuf[MAXLEN];
     struct  hostent         *hp;
     struct  sockaddr_in     server;
@@ -95,10 +104,7 @@ int main(int argc, char **argv)
        exit(1);
     }
 
-    for (i = 0; i < data_size; i++) {
-       j = (i < 26) ? i : i % 26;
-       sbuf[i] = 'a' + j;
-    } // construct data to send to the server
+    bufferRandom(sbuf, data_size);
 
     gettimeofday(&start, NULL); /* start delay measurement */
     server_len = sizeof(server);
