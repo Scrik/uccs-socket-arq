@@ -186,8 +186,8 @@ int main(int argc, char **argv)
        printf("Data is corrupted\n");
     close(sd);
 
-    char *outfilename = "echo.out";
-    // sprintf(outfilename, "echo_%s", filename);
+    char outfilename[1024];
+    sprintf(outfilename, "echo_%s", filename);
     printf("   START Dump echo data into file: %s\n", outfilename);
     data_size = writeFile(sbuf, outfilename, bytes);
     printf("   END Dumped echo data of packet size: %d\n", data_size);
