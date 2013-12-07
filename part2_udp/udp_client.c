@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <netdb.h>
 #include <sys/types.h>
+#include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -12,7 +13,14 @@
 
 #define SERVER_UDP_PORT         5000
 #define MAXLEN                  4096
+#define BUF_SIZE                4096     /* block transfer size */
 #define DEFLEN                  64
+
+fatal(char *string)
+{
+  printf("%s\n", string);
+  exit(1);
+}
 
 long delay(struct timeval t1, struct timeval t2)
 {
@@ -38,14 +46,61 @@ int bufferRandom(char *sbuf, int data_size) {
   return data_size;
 }
 
-int bufferFile(char *sbuf, char *filename) {
-  return 0;
+int readFile(char *sbuf, char *filename) {
+  printf("   START Read from file: %s\n", filename);
+
+  int bytes, total_bytes = 0, fd;
+  /* Get and return the file. */
+  fd = open(filename, O_RDONLY); /* open the file */
+  if (fd < 0) fatal("read open failed");
+
+  while (1) {
+    bytes = read(fd, sbuf, BUF_SIZE); /* read from file */
+    if (bytes <= 0) break;     /* check for end of file */
+    total_bytes += bytes;
+  }
+  close(fd);         /* close file */
+  
+  printf("   END Read %d bytes\n", total_bytes);
+
+  return total_bytes;
+}
+
+int writeFile(char *sbuf, char *filename, int filesize) {
+
+  /* Go get the file and write it to a local file 
+     (new or existing, overwritten) of the same name. */
+  // int bytes, packets=0, fd;
+
+  // printf("   START Write to file: %s\n", filename);
+
+  // fd = open(filename, O_WRONLY); /* open the file */
+  // if (fd < 0) fatal("write open failed");
+
+  // // while (1) {
+  //   bytes = write(fd, sbuf, BUF_SIZE);
+  //   // if (bytes <= 0) break;     /* check for end of file */
+  //   // packets++;
+  // // }
+  // close(fd);         /* close file */
+
+  // return bytes/BUF_SIZE;
+
+  int bytes;
+  FILE *dst;
+  printf("   START Write to file: %s\n", filename);
+  dst = fopen(filename, "w+");
+  bytes = fwrite(sbuf, filesize*sizeof(char), 1, dst);
+  fclose(dst);
+  printf("   END Wrote %d bytes\n", bytes);
+
+  return bytes;
 }
 
 int main(int argc, char **argv)
 {
     int     data_size = DEFLEN, port = SERVER_UDP_PORT, protocol;
-    int     i, sd, server_len;
+    int     i, sd, server_len, bytes;
     char    *pname, *host, *filename, rbuf[MAXLEN], sbuf[MAXLEN];
     struct  hostent         *hp;
     struct  sockaddr_in     server;
@@ -108,9 +163,11 @@ int main(int argc, char **argv)
        exit(1);
     }
 
-    data_size = bufferRandom(sbuf, data_size);
+    bytes = readFile(sbuf, filename);
 
     gettimeofday(&start, NULL); /* start delay measurement */
+    // printf("   START Send data at %s\n", start);
+
     server_len = sizeof(server);
     if (sendto(sd, sbuf, data_size, 0, (struct sockaddr *)
        &server, server_len) == -1) {
@@ -123,8 +180,17 @@ int main(int argc, char **argv)
        exit(1);
     }
     gettimeofday(&end, NULL); /* end delay measurement */
+    // printf("   END Retrieved data echo at %s\n", end);
+
     if (strncmp(sbuf, rbuf, data_size) != 0)
        printf("Data is corrupted\n");
     close(sd);
+
+    char *outfilename = "echo.out";
+    // sprintf(outfilename, "echo_%s", filename);
+    printf("   START Dump echo data into file: %s\n", outfilename);
+    data_size = writeFile(sbuf, outfilename, bytes);
+    printf("   END Dumped echo data of packet size: %d\n", data_size);
+
     return(0);
 }

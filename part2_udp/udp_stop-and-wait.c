@@ -12,7 +12,7 @@
 
 #define SERVER_UDP_PORT    5000
 #define MAXLEN             4096
-#define DROP_RATE          5     // Out of 100, % chance of dropping
+#define DROP_RATE          1     // Out of 100, % chance of dropping
 
 /**
  * Implement the Stop-and-Wait ARQ protocol
