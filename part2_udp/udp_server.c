@@ -5,6 +5,8 @@
 #include <netinet/in.h>
 #include <time.h>
 
+#include "udp_stop-and-wait.h"
+
 #define SERVER_UDP_PORT    5000
 #define MAXLEN             4096
 #define DROP_RATE          5     // Out of 100, % chance of dropping
@@ -58,7 +60,7 @@ int main(int argc, char **argv)
             continue;
       }
 
-      sendBasic(client_len, client, sd, buf, n);
+      sendStopAndWait(client_len, client, sd, buf, n);
    }
    close(sd);
    return(0);

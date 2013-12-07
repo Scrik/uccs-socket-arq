@@ -7,6 +7,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
+#include "udp_stop-and-wait.h"
+
 #define SERVER_UDP_PORT         5000
 #define MAXLEN                  4096
 #define DEFLEN                  64

@@ -1,0 +1,1 @@
+int sendStopAndWait(int client_len, struct sockaddr_in client, int sd, char *buf, int n);
