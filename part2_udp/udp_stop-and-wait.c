@@ -36,6 +36,8 @@ struct ack
  **/
 int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n, int dropRate)
 {
+// DEBUG
+   n = 1;
 
    printf("START [S-a-W] Sending datagram...\n");
    printf("   CLIENT => client_len=%d, n=%d\n", client_len, n);
@@ -49,6 +51,8 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    struct frame a_frame;
 
    // printf("   START Send info packet, saying ");
+
+
 
    printf("   START iterating over packets! BufIn.len = %d\n", n);
    printf("      ");
@@ -93,14 +97,15 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    }
 }
 
-int receive_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n)
+int receive_udp(int client_len, struct sockaddr_in client, int sd, char *buf)
 {
+   int n;
    printf("START Receive UDP\n");
    if ((n = recvfrom(sd, buf, MAXLEN, 0, 
    (struct sockaddr *)&client, &client_len)) < 0) {
          fprintf(stderr, "END [FAILURE] Can't receive datagram\n");
-         return 1;
+         return -1;
    }
-   printf("END [SUCCESS] Receive UDP\n");
-   return 0;
+   printf("END [SUCCESS] Receive UDP, n=%d\n", n);
+   return n;
 }

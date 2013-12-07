@@ -169,17 +169,20 @@ int main(int argc, char **argv)
     // printf("   START Send data at %s\n", start);
 
     server_len = sizeof(server);
-    
-    if (sendto(sd, sbuf, data_size, 0, (struct sockaddr *)
-       &server, server_len) == -1) {
-       fprintf(stderr, "sendto error\n");
-       exit(1);
-    }
-    if (recvfrom(sd, rbuf, MAXLEN, 0, (struct sockaddr *)
-       &server, &server_len) < 0) {
-       fprintf(stderr, "recvfrom error\n");
-       exit(1);
-    }
+
+    send_udp(server_len, server, sd, sbuf, bytes/data_size, 0);
+    receive_udp(server_len, server, sd, sbuf);
+
+    // if (sendto(sd, sbuf, data_size, 0, (struct sockaddr *)
+    //    &server, server_len) == -1) {
+    //    fprintf(stderr, "sendto error\n");
+    //    exit(1);
+    // }
+    // if (recvfrom(sd, rbuf, MAXLEN, 0, (struct sockaddr *)
+    //    &server, &server_len) < 0) {
+    //    fprintf(stderr, "recvfrom error\n");
+    //    exit(1);
+    // }
     gettimeofday(&end, NULL); /* end delay measurement */
     // printf("   END Retrieved data echo at %s\n", end);
 
