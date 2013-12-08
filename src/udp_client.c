@@ -99,13 +99,28 @@ int main(int argc, char **argv)
 
     num_frames = calculateNumFrames(bytes, data_size);
 
-    if( -1 == send_saw(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0)) {
-      printf("END [FAILURE] Error sending via UDP\n");
-      return(1);
+    switch(protocol) {
+      case STOP_AND_WAIT:
+        if( -1 == send_saw(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0)) {
+          printf("END [FAILURE] Error sending via UDP\n");
+          return(1);
+        }
+        bytes = receive_saw(&server_len, &server, sd, rbuf, &data_size, 0);
+        break;
+      case GO_BACK_N:
+        printf("END [FAILURE] GO BACK N not implemented yet\n");
+        return(1);
+        break;
+      case SELECTIVE_REPEAT:
+        printf("END [FAILURE] SELECTIVE REPEAT not implemented\n");
+        return(1);
+        break;
+      default:
+        print_usage(pname);
+        return(1);
+        break;
     }
-
-    bytes = receive_saw(&server_len, &server, sd, rbuf, &data_size, 0);
-
+    
     if (strncmp(sbuf, rbuf, bytes) != 0)
        printf("Data is corrupted\n");
     close(sd);

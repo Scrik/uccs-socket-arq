@@ -30,14 +30,12 @@ int main(int argc, char **argv)
     argc--;
 
     if (argc > 0) {
-      printf("argc = %d\n", argc);
        if(strcmp(*++argv, "-p") == 0) {
           port = atoi(*++argv);
           argc -= 2;
        } else {
          --argv;
        }
-      printf("argc = %d\n", argc);
        if(argc == 2) {
         dropRate = atoi(*++argv);
         protocol = atoi(*++argv);
@@ -74,23 +72,31 @@ int main(int argc, char **argv)
    while (1) {
       client_len = sizeof(client);
 
-      // printf("START Receive UDP\n");
-      // if ((n = recvfrom(sd, buf, MAXLEN, 0, 
-      // (struct sockaddr *)&client, &client_len)) < 0) {
-      //       printf("END [FAILURE] Can't receive datagram\n");
-      //       continue;
-      // }
-      // printf("END [SUCCESS] Receive UDP\n");
+      switch(protocol) {
+        case STOP_AND_WAIT:
+          if( (bytes = receive_saw(&client_len, &client, sd, buf, &data_size, dropRate)) == -1 ) {
+             continue;
+          }
+          num_frames = calculateNumFrames(bytes, data_size);
 
-      if( (bytes = receive_saw(&client_len, &client, sd, buf, &data_size, dropRate)) == -1 ) {
-         continue;
+          printf("ECHO %d x %d B Frames of total size %d B\n", num_frames, data_size, bytes);
+
+          send_saw(client_len, client, sd, buf, num_frames, data_size, bytes, dropRate);
+
+          break;
+        case GO_BACK_N:
+          printf("END [FAILURE] GO BACK N not implemented yet\n");
+          return(1);
+          break;
+        case SELECTIVE_REPEAT:
+          printf("END [FAILURE] SELECTIVE REPEAT not implemented\n");
+          return(1);
+          break;
+        default:
+          print_usage(pname);
+          return(1);
+          break;
       }
-
-      num_frames = calculateNumFrames(bytes, data_size);
-
-      printf("ECHO %d x %d B Frames of total size %d B\n", num_frames, data_size, bytes);
-
-      send_saw(client_len, client, sd, buf, num_frames, data_size, bytes, dropRate);
    }
    close(sd);
    return(0);

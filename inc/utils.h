@@ -6,6 +6,11 @@
 #define TIMEOUT_MS  			50 		// Timeout in millisec
 #define MAX_RETRIES				15
 
+// Id of protocols
+#define STOP_AND_WAIT			1
+#define GO_BACK_N				2
+#define SELECTIVE_REPEAT		3
+
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
        __typeof__ (b) _b = (b); \
