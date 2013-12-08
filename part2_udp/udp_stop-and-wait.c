@@ -85,7 +85,7 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
       a_frame.len = min( data_size, bytes_left );
       a_frame.num_frames = num_frames;
 
-      printf("   START Send %d B Frame #%d\n", a_frame.len, a_frame.seq);
+      printf("   START Send Frame: SEQ #%d, FRAMES #%d, LEN %d B\n", a_frame.seq, a_frame.num_frames, a_frame.len);
 
       memcpy(a_frame.data, (buf+(i*data_size)), a_frame.len );
 
