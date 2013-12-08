@@ -19,8 +19,9 @@ void print_usage(char *pname)
 
 int main(int argc, char **argv)
 {
-   int    sd, client_len, n, port = SERVER_UDP_PORT, dropRate, protocol, num_frames, data_size, bytes;
-   char    buf[BUF_SIZE], *pname;
+   int    sd, client_len, n, port = SERVER_UDP_PORT, dropRate, protocol;
+   int    num_frames, data_size, bytes, filename_bytes, errno;
+   char    rbuf[BUF_SIZE], buf[BUF_SIZE], *pname, *filename, data_size_str[5];
    struct    sockaddr_in    server, client;
 
    // Seed the random number generator
@@ -74,10 +75,20 @@ int main(int argc, char **argv)
 
       switch(protocol) {
         case STOP_AND_WAIT:
-          if( (bytes = receive_saw(&client_len, &client, sd, buf, &data_size, dropRate)) == -1 ) {
-             continue;
+          printf("START Get filename from client...\n");
+          // Get the filename from the client
+          if( (filename_bytes = receive_saw(&client_len, &client, sd, rbuf, &data_size, dropRate)) == -1 ) {
+            printf("END [FAILURE] Error getting filename from client\n");
+            continue;
           }
+          // The request comes in the form of "[data_size],[filename]", where [data_size] must be 5-char
+          memcpy(data_size_str, rbuf, 5);
+          printf("END Client request file: %s\n", rbuf);
+          bytes = readFile(buf, (rbuf+6) );
+          data_size = atoi(data_size_str);
+
           num_frames = calculateNumFrames(bytes, data_size);
+
           printf("ECHO %d x %d B Frames of total size %d B\n", num_frames, data_size, bytes);
           send_saw(client_len, client, sd, buf, num_frames, data_size, bytes, dropRate);
 

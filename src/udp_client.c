@@ -23,7 +23,7 @@ void print_usage(char *pname)
 int main(int argc, char **argv)
 {
     int     data_size = DEFLEN, port = SERVER_UDP_PORT, protocol;
-    int     i, sd, server_len, bytes, num_frames;
+    int     i, sd, server_len, bytes, num_frames, errno;
     char    *pname, *host, *src_filename, *dst_filename, rbuf[BUF_SIZE], sbuf[BUF_SIZE];
     struct  hostent         *hp;
     struct  sockaddr_in     server;
@@ -91,21 +91,25 @@ int main(int argc, char **argv)
        exit(1);
     }
 
-    bytes = readFile(sbuf, src_filename);
-
-    // printf("   START Send data at %s\n", start);
-
+    bytes = sizeof(src_filename)+1;
     server_len = sizeof(server);
-
     num_frames = calculateNumFrames(bytes, data_size);
+
+printf("SEND: '%05d,%s'\n", data_size, src_filename);
+    bytes = sprintf(sbuf, "%05d,%s", data_size, src_filename);
+    printf("==> '%s' size = %d\n", sbuf, bytes);
 
     switch(protocol) {
       case STOP_AND_WAIT:
+        printf("START Request file '%s' from server...\n", src_filename);
         if( -1 == send_saw(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0)) {
-          printf("END [FAILURE] Error sending via UDP\n");
+          printf("END [FAILURE] Error requestion file. Errno: %d - %s\n", errno, strerror(errno));
           return(1);
         }
+        printf("END [SUCCESS] Server knows what we want.\n");
+        printf("START Receive file...\n");
         bytes = receive_saw(&server_len, &server, sd, rbuf, &data_size, 0);
+        printf("END Received file.\n");
         break;
       case GO_BACK_N:
         if( -1 == send_gbn(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0)) {
@@ -124,8 +128,11 @@ int main(int argc, char **argv)
         break;
     }
 
-    if (strncmp(sbuf, rbuf, bytes) != 0)
-       printf("Data is corrupted\n");
+    // if ( bytes != expected_bytes )
+    //    printf("END [FAILURE] Data is wrong size (got %d B, expected % B)\n", bytes, expected_bytes);
+    // else
+    //   printf("END [SUCCESS?] Data is correct size (%d B)\n", bytes);
+
     close(sd);
 
     printf("START Dump %d B of echo data into file: %s\n", bytes, dst_filename);
