@@ -20,7 +20,7 @@ void print_usage(char *pname)
 
 int main(int argc, char **argv)
 {
-   int    sd, client_len, n, port = SERVER_UDP_PORT, dropRate, protocol, num_frames;
+   int    sd, client_len, n, port = SERVER_UDP_PORT, dropRate, protocol, num_frames, data_size;
    char    buf[MAXLEN], *pname;
    struct    sockaddr_in    server, client;
 
@@ -83,11 +83,13 @@ int main(int argc, char **argv)
       // }
       // printf("END [SUCCESS] Receive UDP\n");
 
-      if( (num_frames = receive_udp(client_len, client, sd, buf)) == -1 ) {
+      if( (num_frames = receive_udp(client_len, client, sd, buf, &data_size)) == -1 ) {
          continue;
       }
 
-      send_udp(client_len, client, sd, buf, num_frames, MAXLEN, dropRate);
+      printf("~~~~ data_size from receive: %d\n", data_size);
+
+      send_udp(client_len, client, sd, buf, num_frames, data_size, dropRate);
    }
    close(sd);
    return(0);
