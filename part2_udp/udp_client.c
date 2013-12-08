@@ -88,7 +88,7 @@ int writeFile(char *sbuf, char *filename, int filesize) {
 
   int bytes;
   FILE *dst;
-  printf("   START Write to file: %s\n", filename);
+  printf("   START Write to file: %s, size: %d\n", filename, filesize);
   dst = fopen(filename, "w+");
   bytes = fwrite(sbuf, filesize*sizeof(char), 1, dst);
   fclose(dst);
@@ -100,7 +100,7 @@ int writeFile(char *sbuf, char *filename, int filesize) {
 int main(int argc, char **argv)
 {
     int     data_size = DEFLEN, port = SERVER_UDP_PORT, protocol;
-    int     i, sd, server_len, bytes;
+    int     i, sd, server_len, bytes, num_frames;
     char    *pname, *host, *filename, rbuf[MAXLEN], sbuf[MAXLEN];
     struct  hostent         *hp;
     struct  sockaddr_in     server;
@@ -171,7 +171,10 @@ int main(int argc, char **argv)
     server_len = sizeof(server);
 
     send_udp(server_len, server, sd, sbuf, bytes/data_size, data_size, 0);
-    receive_udp(server_len, server, sd, rbuf, &data_size);
+    num_frames = receive_udp(&server_len, &server, sd, rbuf, &data_size);
+
+    printf("==> num_frames=%d, data_size=%d, bytes=%d, num*data=%d\n", num_frames, data_size, bytes, num_frames*data_size);
+    bytes = num_frames*data_size;
 
     // if (sendto(sd, sbuf, data_size, 0, (struct sockaddr *)
     //    &server, server_len) == -1) {
@@ -186,7 +189,7 @@ int main(int argc, char **argv)
     gettimeofday(&end, NULL); /* end delay measurement */
     // printf("   END Retrieved data echo at %s\n", end);
 
-    if (strncmp(sbuf, rbuf, data_size) != 0)
+    if (strncmp(sbuf, rbuf, bytes) != 0)
        printf("Data is corrupted\n");
     close(sd);
 

@@ -40,7 +40,7 @@ struct ack
 int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int num_frames, int data_size, int dropRate)
 {
 
-   printf("START [S-a-W] Sending %d Frames...\n", num_frames);
+   printf("START [S-a-W] Sending %d Frames. of total size: %d..\n", num_frames, num_frames*data_size);
 
    // Modify the buffer to simulate dropped packets
    int m = 0;  // Size of modified buffer
@@ -79,7 +79,7 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
          // DO NOTHING, intentionally
       }
    }
-   printf("\n   END iterating over frames. Dropped %d frames\n", num_frames-j);
+   printf("END Tried to send %d frames. Dropped %d frames\n", num_frames, num_frames-j);
 
    print_buf(buf, data_size, num_frames);
 
@@ -93,7 +93,7 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    // }
 }
 
-int receive_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int *data_size)
+int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, int *data_size)
 {
    int n, i=0, seq = -1, num_frames=1;
    struct frame a_frame;
@@ -103,7 +103,7 @@ int receive_udp(int client_len, struct sockaddr_in client, int sd, char *buf, in
    for(i=0; i<num_frames; i++) {
       printf("   START Receive frame %3d\n", i);
       n = recvfrom(sd, &a_frame, sizeof(a_frame), 0, 
-            (struct sockaddr *)&client, &client_len);
+            (struct sockaddr *)client, client_len);
       if(n == -1) {
          fprintf(stderr, "   END [FAILURE] Frame receive error: %d - %s\n", errno, strerror(errno));
          return -1;
@@ -126,16 +126,16 @@ int receive_udp(int client_len, struct sockaddr_in client, int sd, char *buf, in
    //       fprintf(stderr, "END [FAILURE] Can't receive datagram\n");
    //       return -1;
    // }
-   printf("END [SUCCESS] Receive UDP, %d Frames\n", i);
+   printf("END [SUCCESS] Receive UDP, %d Frames of total size: %d\n", i, num_frames * (*data_size) );
 
    print_buf(buf, *data_size, num_frames);
 
-   return i;
+   return num_frames;
 }
 
 void print_buf(char *buf, int data_size, int num_frames)
 {
-   printf("START Print buffer\n");
+   printf("START Print buffer of size: %d\n", data_size*num_frames);
    int i;
    for(i=0; i < data_size*num_frames; i++) {
       printf("%c", buf[i]);

@@ -83,7 +83,7 @@ int main(int argc, char **argv)
       // }
       // printf("END [SUCCESS] Receive UDP\n");
 
-      if( (num_frames = receive_udp(client_len, client, sd, buf, &data_size)) == -1 ) {
+      if( (num_frames = receive_udp(&client_len, &client, sd, buf, &data_size)) == -1 ) {
          continue;
       }
 
