@@ -4,6 +4,8 @@
 #define DEFLEN                  64
 #define MAX_PRINT_BUF			1024
 #define TIMEOUT_MS  			50 		// Timeout in millisec
+#define GBN_TIMEOUT   			1 		// Timeout in seconds
+#define GBN_WINDOW_SIZE			5 		// How many outstanding frames are allowed?
 #define MAX_RETRIES				15
 
 // Id of protocols

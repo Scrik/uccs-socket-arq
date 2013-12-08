@@ -27,6 +27,7 @@ struct ack
 {
    uint32_t seq;
    uint32_t len;  // Secretly use the len property, which matches the frame, as an identifier of an ACK
+   uint32_t bytes;
 };
 
 
@@ -54,13 +55,117 @@ int send_gbn(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    struct  timeval         start, end;
    struct timeval timeout;
    int time_diff=0, retries;
-   int bytes_sent = 0, bytes_left;
+   int bytes_acked = 0, bytes_left, last_ack = -1, elapsed;
+
+   int a_frame.seq=0;
+
+   // Iterate until the entire file is sent
+   while(1) {
+
+      /***********************************************************************************************
+       * Establish a time after which we will process the ACKs
+       ***/
+      gettimeofday(&timeout, NULL); /* start delay measurement */
+
+      /***********************************************************************************************
+       * Send a bunch of frames, and also receive ACKs
+       ***/
+       while(1) {
+
+         /********************************************************************************************
+          * Send a frame
+          ***/
+         if(   (a_frame.seq < num_frames) &&                // Don't send more than we want to send
+               (a_frame.seq - last_ack) < GBN_WINDOW_SIZE   // Don't send more than the window allows
+            )
+         {
+            a_frame.len = min( data_size, bytes_left );
+            a_frame.num_frames = num_frames;
+
+            printf("   START Send Frame: SEQ #%d, FRAMES %d, LEN %d B\n", a_frame.seq, a_frame.num_frames, a_frame.len);
+
+            printf("      MEMCPY %d B @ index %d\n", a_frame.len, (a_frame.seq*data_size) );
+            memcpy(a_frame.data, (buf+(a_frame.seq*data_size)), a_frame.len );
+
+            r = 1 + (rand() % 100); // range of 1-100
+            if( r > dropRate ) {
+               n = sendto(sd, &a_frame, sizeof(a_frame), 0, 
+               (struct sockaddr *)&client, client_len );
+               if(n == -1) {
+                  printf("   END [FAILURE] Frame send error: %d - %s\n", errno, strerror(errno));
+                  // It happens, just move on...
+               } else {
+                  // Might have worked! Of course we wouldn't know if a real ntwk drop occurs, 
+                  // but that's what ACKs are for, after all
+                  a_frame.seq++;
+                  printf("   END [SUCCESS] Sent frame with result: %d\n", n);
+               }
+            } else {
+               j++;
+               printf("   END [DROPPED] Dropped (Frame #%d)\n", a_frame.seq);
+               // By not copying over the element, we "drop" it
+               // DO NOTHING, intentionally
+            }
+         } else {
+            // We've sent all the frames, but still need to collect ACKs
+            // DO NOTHING HERE, and just fall through to the "Check for an ACK" code below
+         }
 
 
+         /********************************************************************************************
+          * Check for an ACK
+          ***/
+         printf("   START Check for ACK #%d\n", last_ack+1);
 
-   printf("END [FAILURE] GBN not implemented\n");
+         n = recvfrom(sd, &an_ack, sizeof(an_ack), 0, 
+               (struct sockaddr *)&client, &client_len);
+         if(n == -1) {
+            printf("      END [FAILURE] ACK receive error: %d - %s\n", errno, strerror(errno));
+            // Errors happen, just move on and don't count this as a recvd ACK
+         } else {
+            if( an_ack.seq == last_ack+1 ) {
+               // Received the ACK in order, ALL IS GOOD
+               last_ack = an_ack.seq;
 
-   return -1;
+               // ACKs include the number of bytes they are ACK'ing
+               bytes_acked += an_ack.bytes;
+
+               printf("   END [SUCCESS] Got ACK #%d\n", an_ack.seq);
+            } else {
+               // Received ACK out of order -- we probably missed an ACK, or the receiver missed a frame
+               printf("   END [FAILURE] Expected ACK #%d, got ACK #%d\n", last_ack+1, an_ack.seq);
+               // DO NOTHING, and fall through, letting the "interrupt" logic handle this issue
+            }
+         }
+
+
+         /********************************************************************************************
+          * Timeout "interrupt" - i.e. poll the time and compare to start
+          ***/
+         gettimeofday(&end, NULL); /* end delay measurement */
+         elapsed = delay(start, end);  // Get the diff in seconds
+
+         if(elapsed > GBN_TIMEOUT) {
+            // Timer expired! Get out of here and fall through to GBN processing
+            break;
+         }
+       } // inner loop
+
+
+      /***********************************************************************************************
+       * Time expired, so process ACKs and decide if we need to go back, and if so what's N
+       ***/
+       if( last_ack+1 < num_frames ) {
+         // There are more frames to send and have acknowledged
+       } else {
+         // Done!
+       }
+
+
+   }  // outer loop
+
+   printf("END [SUCCES] GBN Sent %d frames, with %d B ACK'ed\n", num_frames, bytes_acked);
+   return bytes_acked;
 }
 
 int receive_gbn(int *client_len, struct sockaddr_in *client, int sd, char *buf, int *data_size, int dropRate)
