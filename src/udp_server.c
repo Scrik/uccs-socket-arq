@@ -5,8 +5,8 @@
 #include <netinet/in.h>
 #include <time.h>
 
-#include "../utils.h"
-#include "udp_stop-and-wait.h"
+#include "../inc/utils.h"
+#include "../inc/saw.h"
 
 
 void print_usage(char *pname)

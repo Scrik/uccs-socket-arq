@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include "utils.h"
+#include "../inc/utils.h"
 
 
 int calculateNumFrames(int bytes, int data_size)

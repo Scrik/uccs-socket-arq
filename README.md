@@ -2,6 +2,7 @@
 
 ## Usage
 ### Automated
+
 There are utility scripts `udp_saw.sh`, `TODO - others` for running the client/server on both the README.md and (TODO)
 the PDF.
 
@@ -18,6 +19,8 @@ udp_saw.sh
 # Test out Go Back N
 TODO
 ```
+
+The scripts will run the protocol with several drop rates and both the `README.md` and `PDDModel_Network99.pdf`
 
 ### Manual
 If you want to feel like you're on the front lines, you can run the steps like so:

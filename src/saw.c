@@ -9,8 +9,8 @@
 #include <netinet/in.h>
 #include <errno.h>
 
-#include "../utils.h"
-#include "udp_stop-and-wait.h"
+#include "../inc/utils.h"
+#include "../inc/saw.h"
 
 
 /**
