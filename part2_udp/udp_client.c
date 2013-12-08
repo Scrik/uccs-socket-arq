@@ -9,13 +9,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include "../utils.h"
 #include "udp_stop-and-wait.h"
-
-fatal(char *string)
-{
-  printf("%s\n", string);
-  exit(1);
-}
 
 
 void print_usage(char *pname)
@@ -23,66 +18,6 @@ void print_usage(char *pname)
   fprintf(stderr,
   "Usage: %s [-s data_size] host [-p port] src_filename dst_filename protocol\n\
    protocol: 0=Basic, 1=Stop-and-Wait, 2=Go Back N, 3=Selective Repeat\n", pname);
-}
-
-int bufferRandom(char *sbuf, int data_size) {
-  int i, j;
-  for (i = 0; i < data_size; i++) {
-     j = (i < 26) ? i : i % 26;
-     sbuf[i] = 'a' + j;
-  } // construct data to send to the server
-  return data_size;
-}
-
-int readFile(char *sbuf, char *filename) {
-  printf("   START Read from file: %s\n", filename);
-
-  int bytes, total_bytes = 0, fd;
-  /* Get and return the file. */
-  fd = open(filename, O_RDONLY); /* open the file */
-  if (fd < 0) fatal("read open failed");
-
-  while (1) {
-    bytes = read(fd, sbuf, BUF_SIZE); /* read from file */
-    if (bytes <= 0) break;     /* check for end of file */
-    total_bytes += bytes;
-  }
-  close(fd);         /* close file */
-  
-  printf("   END Read %d bytes\n", total_bytes);
-
-  return total_bytes;
-}
-
-int writeFile(char *sbuf, char *filename, int filesize) {
-
-  /* Go get the file and write it to a local file 
-     (new or existing, overwritten) of the same name. */
-  // int bytes, packets=0, fd;
-
-  // printf("   START Write to file: %s\n", filename);
-
-  // fd = open(filename, O_WRONLY); /* open the file */
-  // if (fd < 0) fatal("write open failed");
-
-  // // while (1) {
-  //   bytes = write(fd, sbuf, BUF_SIZE);
-  //   // if (bytes <= 0) break;     /* check for end of file */
-  //   // packets++;
-  // // }
-  // close(fd);         /* close file */
-
-  // return bytes/BUF_SIZE;
-
-  int bytes;
-  FILE *dst;
-  printf("   START Write to file: %s, size: %d\n", filename, filesize);
-  dst = fopen(filename, "w+");
-  bytes = fwrite(sbuf, filesize*sizeof(char), 1, dst);
-  fclose(dst);
-  printf("   END Wrote %d bytes\n", bytes);
-
-  return bytes;
 }
 
 int main(int argc, char **argv)
@@ -164,12 +99,12 @@ int main(int argc, char **argv)
 
     num_frames = calculateNumFrames(bytes, data_size);
 
-    if( -1 == send_udp(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0)) {
+    if( -1 == send_saw(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0)) {
       printf("END [FAILURE] Error sending via UDP\n");
       return(1);
     }
 
-    bytes = receive_udp(&server_len, &server, sd, rbuf, &data_size, 0);
+    bytes = receive_saw(&server_len, &server, sd, rbuf, &data_size, 0);
 
     if (strncmp(sbuf, rbuf, bytes) != 0)
        printf("Data is corrupted\n");

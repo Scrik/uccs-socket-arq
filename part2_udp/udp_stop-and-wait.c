@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <errno.h>
 
+#include "../utils.h"
 #include "udp_stop-and-wait.h"
 
 
@@ -29,40 +30,6 @@ struct ack
 };
 
 
-int calculateNumFrames(int bytes, int data_size)
-{
-   int num_frames;
-   num_frames = bytes/data_size;
-   // Do we need an additional, shorter frame?
-   if(num_frames*data_size < bytes)
-      num_frames++;
-   return num_frames;
-}
-
-void print_buf(char *buf, int bytes)
-{
-   printf("START Print buffer of size: %d\n", bytes);
-   if(bytes > MAX_PRINT_BUF) {
-      bytes = MAX_PRINT_BUF;
-      printf("   TRUNCATE Buffer too long, truncate to %d B\n", bytes);
-   }
-   int i;
-   for(i=0; i < bytes; i++) {
-      printf("%c", buf[i]);
-   }
-   printf("\n");
-   printf("END Print buffer\n");
-}
-
-long delay(struct timeval t1, struct timeval t2)
-{
-   long d;
-   d = (t2.tv_sec - t1.tv_sec) * 1000;
-   d += ((t2.tv_usec - t1.tv_usec + 500) / 1000);
-   return(d);
-}
-
-
 /**
  * Implement the Stop-and-Wait ARQ protocol
  *
@@ -71,7 +38,7 @@ long delay(struct timeval t1, struct timeval t2)
  *
  * 
  **/
-int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int num_frames, int data_size, int bytes, int dropRate)
+int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int num_frames, int data_size, int bytes, int dropRate)
 {
 
    printf("START [S-a-W] Sending %d x %d B Frames of total size: %d...\n", num_frames, data_size, bytes);
@@ -187,7 +154,11 @@ printf(" ======> an_ack.len=%d, a_frame.len=%d\n", an_ack.len, a_frame.len );
 
             printf("   END Sent frame with result: %d\n", n);
 
-            // Successfully sent and got ACK, so go to next packet
+            // Successfully sent and got ACK, so go to next frame, UNLESS THIS IS THE LAST FRAME
+            if(a_frame.seq+1 == num_frames) {
+               // Special case -- send
+            }
+
             break;
          } else {
             j++;
@@ -204,7 +175,7 @@ printf(" ======> an_ack.len=%d, a_frame.len=%d\n", an_ack.len, a_frame.len );
    return bytes_sent;
 }
 
-int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, int *data_size, int dropRate)
+int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, int *data_size, int dropRate)
 {
    int n, i=0, seq = -1, num_frames=1, bytes_recvd=0, r;
    struct frame a_frame;

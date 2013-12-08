@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <time.h>
 
+#include "../utils.h"
 #include "udp_stop-and-wait.h"
 
 
@@ -81,7 +82,7 @@ int main(int argc, char **argv)
       // }
       // printf("END [SUCCESS] Receive UDP\n");
 
-      if( (bytes = receive_udp(&client_len, &client, sd, buf, &data_size, dropRate)) == -1 ) {
+      if( (bytes = receive_saw(&client_len, &client, sd, buf, &data_size, dropRate)) == -1 ) {
          continue;
       }
 
@@ -89,7 +90,7 @@ int main(int argc, char **argv)
 
       printf("ECHO %d x %d B Frames of total size %d B\n", num_frames, data_size, bytes);
 
-      send_udp(client_len, client, sd, buf, num_frames, data_size, bytes, dropRate);
+      send_saw(client_len, client, sd, buf, num_frames, data_size, bytes, dropRate);
    }
    close(sd);
    return(0);
