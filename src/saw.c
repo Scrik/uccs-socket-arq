@@ -41,7 +41,7 @@ struct ack
 int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int num_frames, int data_size, int bytes, int dropRate)
 {
 
-   printf("START [S-a-W] Sending %d x %d B Frames of total size: %d...\n", num_frames, data_size, bytes);
+   printf("START [SAW] Sending %d x %d B Frames of total size: %d...\n", num_frames, data_size, bytes);
 
    // Modify the buffer to simulate dropped packets
    int m = 0;  // Size of modified buffer
@@ -183,7 +183,7 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
    struct timeval timeout;
    int time_diff=0, retries=0;
 
-   printf("START Receive UDP\n");
+   printf("START [SAW] Receive UDP\n");
 
    a_frame.seq = -1;
    i=0;

@@ -23,7 +23,7 @@ rm out/*
 rm pkg/*
 
 echo "Compiling and dumping output to: '$OUT_DIR/build.log'..."
-make saw > $OUT_DIR/build.log 2>&1
+make udp > $OUT_DIR/build.log 2>&1
 EXIT_CODE=$?
 echo " '-> Make exited with code: $EXIT_CODE"
 if [ $EXIT_CODE -ne 0 ]
@@ -55,7 +55,7 @@ do
 		outputFilename="$OUT_DIR/$dropRate.$filename"
 		echo "   Starting client in background and logging output to '$clientLogName'..."
 		echo "   Saving echo file to '$outputFilename'."
-		./client.o -s $FRAME_SIZE $(hostname) $filename $outputFilename 0 > $clientLogName &
+		./client.o -s $FRAME_SIZE $(hostname) $filename $outputFilename $PROTOCOL > $clientLogName &
 		PID_C=$!
 		echo "    '-> Client started with PID $PID_C"
 

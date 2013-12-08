@@ -78,15 +78,17 @@ int main(int argc, char **argv)
              continue;
           }
           num_frames = calculateNumFrames(bytes, data_size);
-
           printf("ECHO %d x %d B Frames of total size %d B\n", num_frames, data_size, bytes);
-
           send_saw(client_len, client, sd, buf, num_frames, data_size, bytes, dropRate);
 
           break;
         case GO_BACK_N:
-          printf("END [FAILURE] GO BACK N not implemented yet\n");
-          return(1);
+          if( (bytes = receive_gbn(&client_len, &client, sd, buf, &data_size, dropRate)) == -1 ) {
+             continue;
+          }
+          num_frames = calculateNumFrames(bytes, data_size);
+          printf("ECHO %d x %d B Frames of total size %d B\n", num_frames, data_size, bytes);
+          send_gbn(client_len, client, sd, buf, num_frames, data_size, bytes, dropRate);
           break;
         case SELECTIVE_REPEAT:
           printf("END [FAILURE] SELECTIVE REPEAT not implemented\n");

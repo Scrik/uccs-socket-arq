@@ -108,8 +108,11 @@ int main(int argc, char **argv)
         bytes = receive_saw(&server_len, &server, sd, rbuf, &data_size, 0);
         break;
       case GO_BACK_N:
-        printf("END [FAILURE] GO BACK N not implemented yet\n");
-        return(1);
+        if( -1 == send_gbn(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0)) {
+          printf("END [FAILURE] Error sending via UDP\n");
+          return(1);
+        }
+        bytes = receive_gbn(&server_len, &server, sd, rbuf, &data_size, 0);
         break;
       case SELECTIVE_REPEAT:
         printf("END [FAILURE] SELECTIVE REPEAT not implemented\n");
@@ -120,7 +123,7 @@ int main(int argc, char **argv)
         return(1);
         break;
     }
-    
+
     if (strncmp(sbuf, rbuf, bytes) != 0)
        printf("Data is corrupted\n");
     close(sd);
