@@ -18,7 +18,7 @@ echo "###                                                                      "
 rm pkg/*
 
 echo "========================= make saw ============================" >> 'build.log'
-make saw > out/build.log
+make saw > out/build.log 2>&1
 EXIT_CODE=$?
 echo "make exited with code: $EXIT_CODE"
 if [ $EXIT_CODE -ne 0 ]
