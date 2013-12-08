@@ -11,24 +11,12 @@
 
 #include "udp_stop-and-wait.h"
 
-#define SERVER_UDP_PORT         5000
-#define MAXLEN                  4096
-#define BUF_SIZE                1048576   /* block transfer size */
-#define DEFLEN                  64
-
 fatal(char *string)
 {
   printf("%s\n", string);
   exit(1);
 }
 
-long delay(struct timeval t1, struct timeval t2)
-{
-   long d;
-   d = (t2.tv_sec - t1.tv_sec) * 1000;
-   d += ((t2.tv_usec - t1.tv_usec + 500) / 1000);
-   return(d);
-}
 
 void print_usage(char *pname)
 {
@@ -107,6 +95,9 @@ int main(int argc, char **argv)
     struct  timeval         start, end;
     unsigned long  address;
 
+    // Seed the random number generator
+    srand(time(NULL));
+
     pname = argv[0];
     argc--;
     argv++;
@@ -165,7 +156,6 @@ int main(int argc, char **argv)
 
     bytes = readFile(sbuf, filename);
 
-    gettimeofday(&start, NULL); /* start delay measurement */
     // printf("   START Send data at %s\n", start);
 
     server_len = sizeof(server);
@@ -173,20 +163,7 @@ int main(int argc, char **argv)
     num_frames = calculateNumFrames(bytes, data_size);
 
     send_udp(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0);
-    bytes = receive_udp(&server_len, &server, sd, rbuf, &data_size);
-
-    // if (sendto(sd, sbuf, data_size, 0, (struct sockaddr *)
-    //    &server, server_len) == -1) {
-    //    fprintf(stderr, "sendto error\n");
-    //    exit(1);
-    // }
-    // if (recvfrom(sd, rbuf, MAXLEN, 0, (struct sockaddr *)
-    //    &server, &server_len) < 0) {
-    //    fprintf(stderr, "recvfrom error\n");
-    //    exit(1);
-    // }
-    gettimeofday(&end, NULL); /* end delay measurement */
-    // printf("   END Retrieved data echo at %s\n", end);
+    bytes = receive_udp(&server_len, &server, sd, rbuf, &data_size, 0);
 
     if (strncmp(sbuf, rbuf, bytes) != 0)
        printf("Data is corrupted\n");

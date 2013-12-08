@@ -53,6 +53,14 @@ void print_buf(char *buf, int bytes)
    printf("END Print buffer\n");
 }
 
+long delay(struct timeval t1, struct timeval t2)
+{
+   long d;
+   d = (t2.tv_sec - t1.tv_sec) * 1000;
+   d += ((t2.tv_usec - t1.tv_usec + 500) / 1000);
+   return(d);
+}
+
 
 /**
  * Implement the Stop-and-Wait ARQ protocol
@@ -74,10 +82,11 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                // r: random number deciding whether to drop packet
    char droppedBuf[num_frames];
    struct frame a_frame;
+   struct ack an_ack;
+   struct  timeval         start, end;
    int bytes_sent = 0, bytes_left;
 
    for(i=0, j=0; i < num_frames; i++) {
-      r = 1 + (rand() % 100); // range of 1-100
 
       bytes_left = bytes - bytes_sent;
 
@@ -85,32 +94,64 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
       a_frame.len = min( data_size, bytes_left );
       a_frame.num_frames = num_frames;
 
-      printf("   START Send Frame: SEQ #%d, FRAMES #%d, LEN %d B\n", a_frame.seq, a_frame.num_frames, a_frame.len);
+      while(1) {
+         printf("   START Send Frame: SEQ #%d, FRAMES %d, LEN %d B\n", a_frame.seq, a_frame.num_frames, a_frame.len);
+         gettimeofday(&start, NULL); /* start delay measurement */
 
-      memcpy(a_frame.data, (buf+(i*data_size)), a_frame.len );
+         memcpy(a_frame.data, (buf+(i*data_size)), a_frame.len );
 
-      if( r > dropRate ) {
+         r = 1 + (rand() % 100); // range of 1-100
+         if( r > dropRate ) {
 
-         // Send the frame
-         n = sendto(sd, &a_frame, sizeof(a_frame), 0, 
-         (struct sockaddr *)&client, client_len );
-         if(n == -1) {
-            fprintf(stderr, "END [FAILURE] Frame send error: %d - %s\n", errno, strerror(errno));
-            return -1;
+            // Send the frame
+            n = sendto(sd, &a_frame, sizeof(a_frame), 0, 
+            (struct sockaddr *)&client, client_len );
+            if(n == -1) {
+               fprintf(stderr, "END [FAILURE] Frame send error: %d - %s\n", errno, strerror(errno));
+               // Retry
+               continue;
+            }
+            printf("   END Sent frame with result: %d\n", n);
+
+            /********** WAIT FOR ACK ******************************/
+            printf("   START Wait for ACK #%d\n", a_frame.seq);
+
+               n = recvfrom(sd, &an_ack, sizeof(an_ack), MSG_DONTWAIT, 
+                     (struct sockaddr *)&client, &client_len);
+               if(n == -1) {
+                  gettimeofday(&end, NULL); /* end delay measurement */
+
+                  if( TIMEOUT < delay(start, end) ) {
+                     fprintf(stderr, "   END [TIMEOUT] ACK receive error: %d - %s\n", errno, strerror(errno));
+                     continue;
+                  } else {
+                     fprintf(stderr, "   END [FAILURE] ACK receive error: %d - %s\n", errno, strerror(errno));
+                     return -1;
+                  }
+               }
+
+               if(an_ack.seq != a_frame.seq) {
+                  fprintf(stderr, "   END [FAILURE] ACK receive error: expected ACK #%d, got #%d\n", a_frame.seq, an_ack.seq);
+                  return -1;
+               }
+            printf("   END Got ACK #%d\n", a_frame.seq);
+            /******************************************************/
+
+            // We have n fewer bytes to send
+            bytes_sent += a_frame.len;
+
+            droppedBuf[j] = buf[i];
+            j++;
+
+            // Successfully sent and got ACK, so go to next packet
+            break;
+         } else {
+            printf("   -X- DROP (Frame #%d)\n", a_frame.seq);
+            // By not copying over the element, we "drop" it
+            // DO NOTHING, intentionally
          }
-         printf("   END Sent frame with result: %d\n", n);
-
-         // We have n fewer bytes to send
-         bytes_sent += a_frame.len;
-
-         droppedBuf[j] = buf[i];
-         j++;
-      } else {
-         printf("DROP\n");
-         // By not copying over the element, we "drop" it
-         // DO NOTHING, intentionally
-      }
-   }
+      } // while(1)
+   } // for each frame
    printf("END Tried to send %d frames. Dropped %d frames\n", num_frames, num_frames-j);
 
    print_buf(buf, bytes_sent);
@@ -118,15 +159,18 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    return bytes_sent;
 }
 
-int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, int *data_size)
+int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, int *data_size, int dropRate)
 {
-   int n, i=0, seq = -1, num_frames=1, bytes_recvd=0;
+   int n, i=0, seq = -1, num_frames=1, bytes_recvd=0, r;
    struct frame a_frame;
+   struct ack an_ack;
 
    printf("START Receive UDP\n");
 
-   for(i=0; i<num_frames; i++) {
-      printf("   START Receive frame %3d\n", i);
+   a_frame.seq = -1;
+   i=0;
+   while(a_frame.seq+1 < num_frames) {
+      printf("   START Receive frame (should be SEQ #%d)\n", a_frame.seq+1);
       n = recvfrom(sd, &a_frame, sizeof(a_frame), 0, 
             (struct sockaddr *)client, client_len);
       if(n == -1) {
@@ -138,12 +182,29 @@ int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
       num_frames = a_frame.num_frames;
       printf("   END Received frame with result: %d, SEQ #%d, FRAMES %d, LEN %d\n", n, seq, num_frames, a_frame.len);
 
-      if(seq == -1) {
-         printf("END [FAILURE] Expected SEQ #0, got SEQ #%d", seq);
-         return -1;
-      }
-
       memcpy((buf+(i*(*data_size))), a_frame.data, *data_size);
+
+         /********** SEND ACK ******************************/
+         printf("   START Send ACK #%d\n", a_frame.seq);
+
+         an_ack.seq = a_frame.seq;
+
+            r = 1 + (rand() % 100); // range of 1-100
+            if( r > dropRate ) {
+
+               // Send the frame
+               n = sendto(sd, &an_ack, sizeof(an_ack), 0, 
+                     (struct sockaddr *)client, *client_len);
+               if(n == -1) {
+                  fprintf(stderr, "   END [FAILURE] ACK send error: %d - %s\n", errno, strerror(errno));
+                  return -1;
+               }
+
+            } else {
+               printf("   -X- DROP (ACK #%d)\n", an_ack.seq);
+            }
+         printf("   END Sent ACK #%d\n", a_frame.seq);
+         /******************************************************/
 
       bytes_recvd += a_frame.len;
    }
