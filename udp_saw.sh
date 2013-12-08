@@ -15,6 +15,7 @@ echo "# FRAME_SIZE    = $FRAME_SIZE                                             
 echo "###                                                                       "
 
 # Clear the pkg directory to avoid confusion
+rm out/*
 rm pkg/*
 
 echo "Compiling and dumping output to: '$OUT_DIR/build.log'..."

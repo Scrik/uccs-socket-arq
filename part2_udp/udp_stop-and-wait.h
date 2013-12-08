@@ -3,7 +3,7 @@
 #define BUF_SIZE                1048576   /* block transfer size */
 #define DEFLEN                  64
 #define MAX_PRINT_BUF			1024
-#define TIMEOUT					0.5
+#define TIMEOUT_MS  			50 		// Timeout in millisec
 
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \

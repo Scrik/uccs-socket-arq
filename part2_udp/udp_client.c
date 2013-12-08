@@ -162,7 +162,11 @@ int main(int argc, char **argv)
 
     num_frames = calculateNumFrames(bytes, data_size);
 
-    send_udp(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0);
+    if( -1 == send_udp(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0)) {
+      printf("END [FAILURE] Error sending via UDP\n");
+      return(1);
+    }
+
     bytes = receive_udp(&server_len, &server, sd, rbuf, &data_size, 0);
 
     if (strncmp(sbuf, rbuf, bytes) != 0)
