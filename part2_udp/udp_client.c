@@ -13,7 +13,7 @@
 
 #define SERVER_UDP_PORT         5000
 #define MAXLEN                  24
-#define BUF_SIZE                4096     /* block transfer size */
+#define BUF_SIZE                1048576   /* block transfer size */
 #define DEFLEN                  64
 
 fatal(char *string)
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
 {
     int     data_size = DEFLEN, port = SERVER_UDP_PORT, protocol;
     int     i, sd, server_len, bytes, num_frames;
-    char    *pname, *host, *filename, rbuf[MAXLEN], sbuf[MAXLEN];
+    char    *pname, *host, *filename, rbuf[BUF_SIZE], sbuf[BUF_SIZE];
     struct  hostent         *hp;
     struct  sockaddr_in     server;
     struct  timeval         start, end;
@@ -170,11 +170,10 @@ int main(int argc, char **argv)
 
     server_len = sizeof(server);
 
-    send_udp(server_len, server, sd, sbuf, bytes/data_size, data_size, 0);
-    num_frames = receive_udp(&server_len, &server, sd, rbuf, &data_size);
+    num_frames = calculateNumFrames(bytes, data_size);
 
-    printf("==> num_frames=%d, data_size=%d, bytes=%d, num*data=%d\n", num_frames, data_size, bytes, num_frames*data_size);
-    bytes = num_frames*data_size;
+    send_udp(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0);
+    bytes = receive_udp(&server_len, &server, sd, rbuf, &data_size);
 
     // if (sendto(sd, sbuf, data_size, 0, (struct sockaddr *)
     //    &server, server_len) == -1) {
@@ -195,9 +194,9 @@ int main(int argc, char **argv)
 
     char outfilename[1024];
     sprintf(outfilename, "out/%s", filename);
-    printf("   START Dump echo data into file: %s\n", outfilename);
-    data_size = writeFile(sbuf, outfilename, bytes);
-    printf("   END Dumped echo data of packet size: %d\n", data_size);
+    printf("START Dump %d B of echo data into file: %s\n", bytes, outfilename);
+    data_size = writeFile(rbuf, outfilename, bytes);
+    printf("END Dumped %d B of echo data into file\n", data_size);
 
     return(0);
 }

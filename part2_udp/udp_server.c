@@ -9,6 +9,7 @@
 
 #define SERVER_UDP_PORT    5000
 #define MAXLEN             1024
+#define BUF_SIZE           1048576   /* block transfer size */
 
 void print_usage(char *pname)
 {
@@ -20,8 +21,8 @@ void print_usage(char *pname)
 
 int main(int argc, char **argv)
 {
-   int    sd, client_len, n, port = SERVER_UDP_PORT, dropRate, protocol, num_frames, data_size;
-   char    buf[MAXLEN], *pname;
+   int    sd, client_len, n, port = SERVER_UDP_PORT, dropRate, protocol, num_frames, data_size, bytes;
+   char    buf[BUF_SIZE], *pname;
    struct    sockaddr_in    server, client;
 
    // Seed the random number generator
@@ -83,13 +84,15 @@ int main(int argc, char **argv)
       // }
       // printf("END [SUCCESS] Receive UDP\n");
 
-      if( (num_frames = receive_udp(&client_len, &client, sd, buf, &data_size)) == -1 ) {
+      if( (bytes = receive_udp(&client_len, &client, sd, buf, &data_size)) == -1 ) {
          continue;
       }
 
-      printf("~~~~ data_size from receive: %d\n", data_size);
+      num_frames = calculateNumFrames(bytes, data_size);
 
-      send_udp(client_len, client, sd, buf, num_frames, data_size, dropRate);
+      printf("ECHO %d x %d B Frames of total size %d B\n", num_frames, data_size, bytes);
+
+      send_udp(client_len, client, sd, buf, num_frames, data_size, bytes, dropRate);
    }
    close(sd);
    return(0);

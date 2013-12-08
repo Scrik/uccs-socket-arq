@@ -14,6 +14,15 @@
 #define SERVER_UDP_PORT    5000
 #define MAXLEN             1024
 
+#define max(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
+#define min(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
+
 /**
  * Frame 0's data will simply be an int, the number of Frames that will be sent
  **/
@@ -29,6 +38,18 @@ struct ack
    uint32_t seq;
 };
 
+
+int calculateNumFrames(int bytes, int data_size)
+{
+   int num_frames;
+   num_frames = bytes/data_size;
+   // Do we need an additional, shorter frame?
+   if(num_frames*data_size < bytes)
+      num_frames++;
+   return num_frames;
+}
+
+
 /**
  * Implement the Stop-and-Wait ARQ protocol
  *
@@ -37,10 +58,10 @@ struct ack
  *
  * 
  **/
-int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int num_frames, int data_size, int dropRate)
+int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int num_frames, int data_size, int bytes, int dropRate)
 {
 
-   printf("START [S-a-W] Sending %d Frames. of total size: %d..\n", num_frames, num_frames*data_size);
+   printf("START [S-a-W] Sending %d x %d B Frames of total size: %d...\n", num_frames, data_size, bytes);
 
    // Modify the buffer to simulate dropped packets
    int m = 0;  // Size of modified buffer
@@ -49,27 +70,34 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                // r: random number deciding whether to drop packet
    char droppedBuf[num_frames];
    struct frame a_frame;
+   int bytes_sent = 0, bytes_left;
 
    for(i=0, j=0; i < num_frames; i++) {
       r = 1 + (rand() % 100); // range of 1-100
-      printf("   START Send frame %3d\n", i);
+
+      bytes_left = bytes - bytes_sent;
 
       a_frame.seq = i;
-      a_frame.len = data_size;
+      a_frame.len = min( data_size, bytes_left );
       a_frame.num_frames = num_frames;
-      memcpy(a_frame.data, (buf+(i*data_size)), data_size);
+
+      printf("   START Send %d B Frame #%d\n", a_frame.len, a_frame.seq);
+
+      memcpy(a_frame.data, (buf+(i*data_size)), a_frame.len );
 
       if( r > dropRate ) {
 
          // Send the frame
-         printf("[[[sendto]]] sizeof(a_frame): %d, client_len: %d\n", sizeof(a_frame), client_len);
          n = sendto(sd, &a_frame, sizeof(a_frame), 0, 
          (struct sockaddr *)&client, client_len );
          if(n == -1) {
             fprintf(stderr, "END [FAILURE] Frame send error: %d - %s\n", errno, strerror(errno));
-            return 1;
+            return -1;
          }
          printf("   END Sent frame with result: %d\n", n);
+
+         // We have n fewer bytes to send
+         bytes_sent += a_frame.len;
 
          droppedBuf[j] = buf[i];
          j++;
@@ -81,21 +109,14 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    }
    printf("END Tried to send %d frames. Dropped %d frames\n", num_frames, num_frames-j);
 
-   print_buf(buf, data_size, num_frames);
+   print_buf(buf, bytes_sent);
 
-   // if (sendto(sd, droppedBuf, j, 0, 
-   // (struct sockaddr *)&client, client_len) != n) {
-   //       fprintf(stderr, "END [FAILURE] Can't send datagram\n");
-   //       return 1;
-   // } else {
-   //    printf("END [SUCCESS] Datagram sent\n");
-   //    return 0;
-   // }
+   return bytes_sent;
 }
 
 int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, int *data_size)
 {
-   int n, i=0, seq = -1, num_frames=1;
+   int n, i=0, seq = -1, num_frames=1, bytes_recvd=0;
    struct frame a_frame;
 
    printf("START Receive UDP\n");
@@ -109,9 +130,9 @@ int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
          return -1;
       }
       seq = a_frame.seq;
-      *data_size = a_frame.len;
+      *data_size = max( *data_size, a_frame.len);
       num_frames = a_frame.num_frames;
-      printf("   END Received frame with result: %d, SEQ #%d, FRAMS %d, LEN %d\n", n, seq, num_frames, *data_size);
+      printf("   END Received frame with result: %d, SEQ #%d, FRAMES %d, LEN %d\n", n, seq, num_frames, a_frame.len);
 
       if(seq == -1) {
          printf("END [FAILURE] Expected SEQ #0, got SEQ #%d", seq);
@@ -119,6 +140,8 @@ int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
       }
 
       memcpy((buf+(i*(*data_size))), a_frame.data, *data_size);
+
+      bytes_recvd += a_frame.len;
    }
 
    // if ((n = recvfrom(sd, buf, MAXLEN, 0, 
@@ -126,18 +149,18 @@ int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
    //       fprintf(stderr, "END [FAILURE] Can't receive datagram\n");
    //       return -1;
    // }
-   printf("END [SUCCESS] Receive UDP, %d Frames of total size: %d\n", i, num_frames * (*data_size) );
+   printf("END [SUCCESS] Receive UDP, %d x %d Frames of total size: %d\n", i, *data_size, bytes_recvd );
 
-   print_buf(buf, *data_size, num_frames);
+   print_buf(buf, bytes_recvd);
 
-   return num_frames;
+   return bytes_recvd;
 }
 
-void print_buf(char *buf, int data_size, int num_frames)
+void print_buf(char *buf, int bytes_recvd)
 {
-   printf("START Print buffer of size: %d\n", data_size*num_frames);
+   printf("START Print buffer of size: %d\n", bytes_recvd);
    int i;
-   for(i=0; i < data_size*num_frames; i++) {
+   for(i=0; i < bytes_recvd; i++) {
       printf("%c", buf[i]);
    }
    printf("\n");
