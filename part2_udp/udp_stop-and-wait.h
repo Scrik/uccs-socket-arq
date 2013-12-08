@@ -4,6 +4,7 @@
 #define DEFLEN                  64
 #define MAX_PRINT_BUF			1024
 #define TIMEOUT_MS  			50 		// Timeout in millisec
+#define MAX_RETRIES				15
 
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \

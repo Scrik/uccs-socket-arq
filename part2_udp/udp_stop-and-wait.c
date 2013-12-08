@@ -25,6 +25,7 @@ struct frame
 struct ack
 {
    uint32_t seq;
+   uint32_t len;  // Secretly use the len property, which matches the frame, as an identifier of an ACK
 };
 
 
@@ -85,7 +86,7 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    struct ack an_ack;
    struct  timeval         start, end;
    struct timeval timeout;
-   int time_diff=0;
+   int time_diff=0, retries;
    int bytes_sent = 0, bytes_left;
 
    // TIMEOUT_MS is in milliseconds
@@ -101,6 +102,7 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    for(i=0, j=0; i < num_frames; i++) {
 
       bytes_left = bytes - bytes_sent;
+      retries = 0;
 
       a_frame.seq = i;
       a_frame.len = min( data_size, bytes_left );
@@ -120,14 +122,19 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
             n = sendto(sd, &a_frame, sizeof(a_frame), 0, 
             (struct sockaddr *)&client, client_len );
             if(n == -1) {
-               fprintf(stderr, "END [FAILURE] Frame send error: %d - %s\n", errno, strerror(errno));
-               // Retry
-               continue;
+               printf("   END [FAILURE] Frame send error: %d - %s\n", errno, strerror(errno));
+               if(retries < MAX_RETRIES) {
+                  printf("RETRY\n");
+                  retries++;
+                  continue;
+               } else {
+                  printf("   END [FAILURE] ACK maxed out retries\n");
+                  return -1;
+               }
             }
-            printf("   END Sent frame with result: %d\n", n);
 
             /********** WAIT FOR ACK ******************************/
-            printf("   START Wait for ACK #%d\n", a_frame.seq);
+            printf("      START Wait for ACK #%d\n", a_frame.seq);
 
                n = recvfrom(sd, &an_ack, sizeof(an_ack), 0, 
                      (struct sockaddr *)&client, &client_len);
@@ -136,23 +143,40 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
 
                   time_diff = delay(start, end);
 
-                  printf("   INFO Time diff = %d\n", time_diff);
+                  printf("         INFO Time diff = %d\n", time_diff);
                   if( TIMEOUT_MS < time_diff ) {
-                     fprintf(stderr, "   END [TIMEOUT] ACK receive error: %d - %s\n", errno, strerror(errno));
-                     printf("RETRY\n");
-                     continue;
+                     printf(stderr, "      END [TIMEOUT] ACK receive error: %d - %s\n", errno, strerror(errno));
+                     if(retries < MAX_RETRIES) {
+                        printf("RETRY\n");
+                        retries++;
+                        continue;
+                     } else {
+                        printf("      END [FAILURE] ACK maxed out retries\n");
+                        return -1;
+                     }
                   } else {
-                     fprintf(stderr, "   END [FAILURE] ACK receive error: %d - %s\n", errno, strerror(errno));
-                     printf("RETRY\n");
-                     continue;
+                     printf("      END [FAILURE] ACK receive error: %d - %s\n", errno, strerror(errno));
+                     if(retries < MAX_RETRIES) {
+                        printf("RETRY\n");
+                        retries++;
+                        continue;
+                     } else {
+                        printf("      END [FAILURE] ACK maxed out retries\n");
+                        return -1;
+                     }
                   }
                }
-
-               if(an_ack.seq != a_frame.seq) {
-                  fprintf(stderr, "   END [FAILURE] ACK receive error: expected ACK #%d, got #%d\n", a_frame.seq, an_ack.seq);
-                  return -1;
+printf(" ======> an_ack.len=%d, a_frame.len=%d\n", an_ack.len, a_frame.len );
+               // Was it actually an ACK?
+               if(an_ack.len == -1) {
+                  if(an_ack.seq != a_frame.seq) {
+                     printf("      END [FAILURE] ACK receive error: expected ACK #%d, got ACK #%d\n", a_frame.seq, an_ack.seq);
+                     return -1;
+                  }
+               } else {
+                  printf("      END [ HMM.. ] ACK receive error: expected ACK #%d, got FRAME #%d\n", a_frame.seq, an_ack.seq);
                }
-            printf("   END Got ACK #%d\n", a_frame.seq);
+            printf("      END Got ACK #%d\n", a_frame.seq);
             /******************************************************/
 
             // We have n fewer bytes to send
@@ -160,6 +184,8 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
 
             droppedBuf[j] = buf[i];
             j++;
+
+            printf("   END Sent frame with result: %d\n", n);
 
             // Successfully sent and got ACK, so go to next packet
             break;
@@ -184,18 +210,19 @@ int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
    struct frame a_frame;
    struct ack an_ack;
    struct timeval timeout;
-   int time_diff=0;
+   int time_diff=0, retries=0;
 
    printf("START Receive UDP\n");
 
    a_frame.seq = -1;
    i=0;
    while(a_frame.seq+1 < num_frames) {
+
       printf("   START Receive frame (should be SEQ #%d)\n", a_frame.seq+1);
       n = recvfrom(sd, &a_frame, sizeof(a_frame), 0, 
             (struct sockaddr *)client, client_len);
       if(n == -1) {
-         fprintf(stderr, "   END [FAILURE] Frame receive error: %d - %s\n", errno, strerror(errno));
+         printf("   END [FAILURE] Frame receive error: %d - %s\n", errno, strerror(errno));
          return -1;
       }
       seq = a_frame.seq;
@@ -204,9 +231,10 @@ int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
 
 
          /********** SEND ACK ******************************/
-         printf("   START Send ACK #%d\n", a_frame.seq);
+            printf("      START Send ACK #%d\n", a_frame.seq);
 
-         an_ack.seq = a_frame.seq;
+            an_ack.seq = a_frame.seq;
+            an_ack.len = -1;
 
             r = 1 + (rand() % 100); // range of 1-100
             if( r > dropRate ) {
@@ -215,17 +243,17 @@ int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
                n = sendto(sd, &an_ack, sizeof(an_ack), 0, 
                      (struct sockaddr *)client, *client_len);
                if(n == -1) {
-                  fprintf(stderr, "   END [FAILURE] ACK send error: %d - %s\n", errno, strerror(errno));
+                  printf("      END [FAILURE] ACK send error: %d - %s\n", errno, strerror(errno));
                   continue;
                }
 
             } else {
-               printf("   -X- DROP (ACK #%d)\n", an_ack.seq);
+               printf("      -X- DROP (ACK #%d)\n", an_ack.seq);
                // If it was a real drop, we would have caught above and received a timeout
-               fprintf(stderr, "   END [TIMEOUT] ACK send error: someone wrote code to simulate dropped pkts...\n");
+               printf("      END [TIMEOUT] ACK send error: someone wrote code to simulate dropped pkts...\n");
                continue;
             }
-         printf("   END Sent ACK #%d\n", a_frame.seq);
+         printf("      END Sent ACK #%d\n", a_frame.seq);
          /******************************************************/
 
       printf("      MEMCPY %d B @ index %d\n", a_frame.len, (a_frame.seq*(*data_size)) );
@@ -234,13 +262,7 @@ int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
       printf("   END Received frame with result: %d, SEQ #%d, FRAMES %d, LEN %d\n", n, seq, num_frames, a_frame.len);
    }
 
-   // if ((n = recvfrom(sd, buf, MAXLEN, 0, 
-   // (struct sockaddr *)&client, &client_len)) < 0) {
-   //       fprintf(stderr, "END [FAILURE] Can't receive datagram\n");
-   //       return -1;
-   // }
    printf("END [SUCCESS] Receive UDP, %d x %d Frames of total size: %d\n", i, *data_size, bytes_recvd );
-
    print_buf(buf, bytes_recvd);
 
    return bytes_recvd;

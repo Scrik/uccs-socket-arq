@@ -54,7 +54,7 @@ int main(int argc, char **argv)
       
    /* Create a datagram socket */
    if ((sd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-      fprintf(stderr, "END [FAILURE] Can't create a socket\n");
+      printf("END [FAILURE] Can't create a socket\n");
       exit(1);
    }
 
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
    server.sin_addr.s_addr = htonl(INADDR_ANY);
    if (bind(sd, (struct sockaddr *)&server, 
             sizeof(server)) == -1) {
-      fprintf(stderr, "END [FAILURE] Can't bind name to socket\n");
+      printf("END [FAILURE] Can't bind name to socket\n");
       exit(1);
    }
 
@@ -76,7 +76,7 @@ int main(int argc, char **argv)
       // printf("START Receive UDP\n");
       // if ((n = recvfrom(sd, buf, MAXLEN, 0, 
       // (struct sockaddr *)&client, &client_len)) < 0) {
-      //       fprintf(stderr, "END [FAILURE] Can't receive datagram\n");
+      //       printf("END [FAILURE] Can't receive datagram\n");
       //       continue;
       // }
       // printf("END [SUCCESS] Receive UDP\n");

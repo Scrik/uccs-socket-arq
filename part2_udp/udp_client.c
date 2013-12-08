@@ -21,7 +21,7 @@ fatal(char *string)
 void print_usage(char *pname)
 {
   fprintf(stderr,
-  "Usage: %s [-s data_size] host [-p port] filename protocol\n\
+  "Usage: %s [-s data_size] host [-p port] src_filename dst_filename protocol\n\
    protocol: 0=Basic, 1=Stop-and-Wait, 2=Go Back N, 3=Selective Repeat\n", pname);
 }
 
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 {
     int     data_size = DEFLEN, port = SERVER_UDP_PORT, protocol;
     int     i, sd, server_len, bytes, num_frames;
-    char    *pname, *host, *filename, rbuf[BUF_SIZE], sbuf[BUF_SIZE];
+    char    *pname, *host, *src_filename, *dst_filename, rbuf[BUF_SIZE], sbuf[BUF_SIZE];
     struct  hostent         *hp;
     struct  sockaddr_in     server;
     struct  timeval         start, end;
@@ -119,8 +119,9 @@ int main(int argc, char **argv)
         print_usage(pname);
         exit(1);
        }
-       if(argc == 2) {
-        filename = *++argv;
+       if(argc == 3) {
+        src_filename = *++argv;
+        dst_filename = *++argv;
         protocol = atoi(*++argv);
        } else {
         print_usage(pname);
@@ -131,10 +132,11 @@ int main(int argc, char **argv)
        exit(1);
     }
 
-    printf("START host=%s, port=%d, filename=%s, protocol=%d\n", host, port, filename, protocol);
+    printf("START host=%s, port=%d, src_filename=%s, dst_filename=%s, protocol=%d\n", 
+                host, port, src_filename, dst_filename, protocol);
 
     if ((sd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-       fprintf(stderr, "Can't create a socket\n");
+       printf("Can't create a socket\n");
        exit(1);
     }
 
@@ -143,18 +145,18 @@ int main(int argc, char **argv)
     server.sin_port = htons(port);
 
     if ((hp = gethostbyname(host)) == NULL) {
-       fprintf(stderr, "Can't get server's IP address\n");
+       printf("Can't get server's IP address\n");
        exit(1);
     }
 
     bcopy(hp->h_addr, (char *) &server.sin_addr, hp->h_length);
  
     if (data_size > MAXLEN) {
-       fprintf(stderr, "Data is too big\n");
+       printf("Data is too big\n");
        exit(1);
     }
 
-    bytes = readFile(sbuf, filename);
+    bytes = readFile(sbuf, src_filename);
 
     // printf("   START Send data at %s\n", start);
 
@@ -173,10 +175,8 @@ int main(int argc, char **argv)
        printf("Data is corrupted\n");
     close(sd);
 
-    char outfilename[1024];
-    sprintf(outfilename, "out/%s", filename);
-    printf("START Dump %d B of echo data into file: %s\n", bytes, outfilename);
-    data_size = writeFile(rbuf, outfilename, bytes);
+    printf("START Dump %d B of echo data into file: %s\n", bytes, dst_filename);
+    data_size = writeFile(rbuf, dst_filename, bytes);
     printf("END Dumped %d B of echo data into file\n", data_size);
 
     return(0);
