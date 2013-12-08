@@ -12,7 +12,7 @@
 #include "udp_stop-and-wait.h"
 
 #define SERVER_UDP_PORT         5000
-#define MAXLEN                  24
+#define MAXLEN                  4096
 #define BUF_SIZE                1048576   /* block transfer size */
 #define DEFLEN                  64
 

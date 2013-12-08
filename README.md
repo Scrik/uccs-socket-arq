@@ -1,6 +1,29 @@
 # CS5220 Project 2: Socket-based ARQ Protocol Programming
 
 ## Usage
+### Automated
+There are utility scripts `udp_saw.sh`, `TODO - others` for running the client/server on both the README.md and (TODO)
+the PDF.
+
+If the script is successful, it will package up the client/server binaries into `pkg/.`. Additionally, it will
+`tar` up the entire `out/` directory into `pkg/out.tar.gz`.
+
+```
+# Test out TCP
+TODO
+
+# Test out Stop-and-Wait
+udp_saw.sh
+
+# Test out Go Back N
+TODO
+```
+
+### Manual
+If you want to feel like you're on the front lines, you can run the steps like so:
+
+NOTE: These commands may be out of date. Please `vim` the udp_*.sh scripts to see what is currently used.
+
  1. TCP Client/Server
     ```
     make tcp

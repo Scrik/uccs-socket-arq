@@ -11,17 +11,6 @@
 
 #include "udp_stop-and-wait.h"
 
-#define SERVER_UDP_PORT    5000
-#define MAXLEN             1024
-
-#define max(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
-     _a > _b ? _a : _b; })
-#define min(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
-     _a < _b ? _a : _b; })
 
 /**
  * Frame 0's data will simply be an int, the number of Frames that will be sent
@@ -47,6 +36,21 @@ int calculateNumFrames(int bytes, int data_size)
    if(num_frames*data_size < bytes)
       num_frames++;
    return num_frames;
+}
+
+void print_buf(char *buf, int bytes)
+{
+   printf("START Print buffer of size: %d\n", bytes);
+   if(bytes > MAX_PRINT_BUF) {
+      bytes = MAX_PRINT_BUF;
+      printf("   TRUNCATE Buffer too long, truncate to %d B\n", bytes);
+   }
+   int i;
+   for(i=0; i < bytes; i++) {
+      printf("%c", buf[i]);
+   }
+   printf("\n");
+   printf("END Print buffer\n");
 }
 
 
@@ -154,15 +158,4 @@ int receive_udp(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
    print_buf(buf, bytes_recvd);
 
    return bytes_recvd;
-}
-
-void print_buf(char *buf, int bytes_recvd)
-{
-   printf("START Print buffer of size: %d\n", bytes_recvd);
-   int i;
-   for(i=0; i < bytes_recvd; i++) {
-      printf("%c", buf[i]);
-   }
-   printf("\n");
-   printf("END Print buffer\n");
 }

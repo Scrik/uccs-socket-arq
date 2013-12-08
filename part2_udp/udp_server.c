@@ -7,9 +7,6 @@
 
 #include "udp_stop-and-wait.h"
 
-#define SERVER_UDP_PORT    5000
-#define MAXLEN             1024
-#define BUF_SIZE           1048576   /* block transfer size */
 
 void print_usage(char *pname)
 {
