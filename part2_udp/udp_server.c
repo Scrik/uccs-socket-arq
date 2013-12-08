@@ -87,7 +87,7 @@ int main(int argc, char **argv)
          continue;
       }
 
-      send_udp(client_len, client, sd, buf, num_frames, dropRate);
+      send_udp(client_len, client, sd, buf, num_frames, MAXLEN, dropRate);
    }
    close(sd);
    return(0);

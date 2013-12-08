@@ -21,6 +21,7 @@ struct frame
 {
    uint32_t seq;
    uint32_t len;
+   uint32_t num_frames;
    char data[MAXLEN];
 };
 struct ack
@@ -36,7 +37,7 @@ struct ack
  *
  * 
  **/
-int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int num_frames, int dropRate)
+int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int num_frames, int data_size, int dropRate)
 {
 
    printf("START [S-a-W] Sending %d Frames...\n", num_frames);
@@ -53,11 +54,12 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
       r = 1 + (rand() % 100); // range of 1-100
       printf("   START Send frame %3d\n", i);
 
-      if( r > dropRate ) {
+      a_frame.seq = i;
+      a_frame.len = data_size;
+      a_frame.num_frames = num_frames;
+      memcpy(a_frame.data, (buf+(i*data_size)), data_size);
 
-         a_frame.seq = i;
-         a_frame.len = num_frames;
-         memcpy(a_frame.data, (buf+i), MAXLEN);
+      if( r > dropRate ) {
 
          // Send the frame
          n = sendto(sd, &a_frame, sizeof(a_frame), 0, 
@@ -78,6 +80,8 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    }
    printf("\n   END iterating over frames. Dropped %d frames\n", num_frames-j);
 
+   print_buf(buf, data_size, num_frames);
+
    // if (sendto(sd, droppedBuf, j, 0, 
    // (struct sockaddr *)&client, client_len) != n) {
    //       fprintf(stderr, "END [FAILURE] Can't send datagram\n");
@@ -90,12 +94,12 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
 
 int receive_udp(int client_len, struct sockaddr_in client, int sd, char *buf)
 {
-   int n, i=0, seq = -1, data_len=1;
+   int n, i=0, seq = -1, num_frames=1, data_size;
    struct frame a_frame;
 
    printf("START Receive UDP\n");
 
-   for(i=0; i<data_len; i++) {
+   for(i=0; i<num_frames; i++) {
       printf("   START Receive frame %3d\n", i);
       n = recvfrom(sd, &a_frame, sizeof(a_frame), 0, 
             (struct sockaddr *)&client, &client_len);
@@ -104,15 +108,16 @@ int receive_udp(int client_len, struct sockaddr_in client, int sd, char *buf)
          return -1;
       }
       seq = a_frame.seq;
-      data_len = a_frame.len;
-      printf("   END Received frame with result: %d, SEQ #%d, LEN %d\n", n, seq, data_len);
+      data_size = a_frame.len;
+      num_frames = a_frame.num_frames;
+      printf("   END Received frame with result: %d, SEQ #%d, FRAMS %d, LEN %d\n", n, seq, num_frames, data_size);
 
       if(seq == -1) {
          printf("END [FAILURE] Expected SEQ #0, got SEQ #%d", seq);
          return -1;
       }
 
-      memcpy((buf+i), a_frame.data, MAXLEN);
+      memcpy((buf+(i*data_size)), a_frame.data, data_size);
    }
 
    // if ((n = recvfrom(sd, buf, MAXLEN, 0, 
@@ -121,5 +126,19 @@ int receive_udp(int client_len, struct sockaddr_in client, int sd, char *buf)
    //       return -1;
    // }
    printf("END [SUCCESS] Receive UDP, %d Frames\n", i);
+
+   print_buf(buf, data_size, num_frames);
+
    return i;
+}
+
+void print_buf(char *buf, int data_size, int num_frames)
+{
+   printf("START Print buffer\n");
+   int i;
+   for(i=0; i < data_size*num_frames; i++) {
+      printf("%c", buf[i]);
+   }
+   printf("\n");
+   printf("END Print buffer\n");
 }
