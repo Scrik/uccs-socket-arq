@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <errno.h>
 
 #include "udp_stop-and-wait.h"
 
@@ -19,6 +20,7 @@
 struct frame
 {
    uint32_t seq;
+   uint32_t len;
    char data[MAXLEN];
 };
 struct ack
@@ -34,48 +36,37 @@ struct ack
  *
  * 
  **/
-int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n, int dropRate)
+int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int num_frames, int dropRate)
 {
-// DEBUG
-   n = 1;
 
-   printf("START [S-a-W] Sending datagram...\n");
-   printf("   CLIENT => client_len=%d, n=%d\n", client_len, n);
+   printf("START [S-a-W] Sending %d Frames...\n", num_frames);
 
    // Modify the buffer to simulate dropped packets
    int m = 0;  // Size of modified buffer
-   int i, j, r;   // i: index of original buffer
+   int i, j, r, n;   // i: index of original buffer
                // j: index of new buffer
                // r: random number deciding whether to drop packet
-   char droppedBuf[n];
+   char droppedBuf[num_frames];
    struct frame a_frame;
 
-   // printf("   START Send info packet, saying ");
-
-
-
-   printf("   START iterating over packets! BufIn.len = %d\n", n);
-   printf("      ");
-   for(i=0, j=0; i < n; i++) {
+   for(i=0, j=0; i < num_frames; i++) {
       r = 1 + (rand() % 100); // range of 1-100
-      printf("      FRAME %3d\n", i);
+      printf("   START Send frame %3d\n", i);
 
       if( r > dropRate ) {
 
          a_frame.seq = i;
-         // printf("         START memcpy\n");
+         a_frame.len = num_frames;
          memcpy(a_frame.data, (buf+i), MAXLEN);
-         // printf("         END memcpy\n");
 
-         printf("         START Send frame %3d\n", i);
          // Send the frame
          n = sendto(sd, &a_frame, sizeof(a_frame), 0, 
          (struct sockaddr *)&client, client_len);
          if(n == -1) {
-            fprintf(stderr, "END [FAILURE] Frame send error\n");
+            fprintf(stderr, "END [FAILURE] Frame send error: %d\n", errno);
             return 1;
          }
-         printf("         END Sent frame with result: %d\n", n);
+         printf("   END Sent frame with result: %d\n", n);
 
          droppedBuf[j] = buf[i];
          j++;
@@ -85,27 +76,50 @@ int send_udp(int client_len, struct sockaddr_in client, int sd, char *buf, int n
          // DO NOTHING, intentionally
       }
    }
-   printf("\n   END iterating over packets! BufOut.len = %d\n", j);
+   printf("\n   END iterating over frames. Dropped %d frames\n", num_frames-j);
 
-   if (sendto(sd, droppedBuf, j, 0, 
-   (struct sockaddr *)&client, client_len) != n) {
-         fprintf(stderr, "END [FAILURE] Can't send datagram\n");
-         return 1;
-   } else {
-      printf("END [SUCCESS] Datagram sent\n");
-      return 0;
-   }
+   // if (sendto(sd, droppedBuf, j, 0, 
+   // (struct sockaddr *)&client, client_len) != n) {
+   //       fprintf(stderr, "END [FAILURE] Can't send datagram\n");
+   //       return 1;
+   // } else {
+   //    printf("END [SUCCESS] Datagram sent\n");
+   //    return 0;
+   // }
 }
 
 int receive_udp(int client_len, struct sockaddr_in client, int sd, char *buf)
 {
-   int n;
+   int n, i=0, seq = -1, data_len=1;
+   struct frame a_frame;
+
    printf("START Receive UDP\n");
-   if ((n = recvfrom(sd, buf, MAXLEN, 0, 
-   (struct sockaddr *)&client, &client_len)) < 0) {
-         fprintf(stderr, "END [FAILURE] Can't receive datagram\n");
+
+   for(i=0; i<data_len; i++) {
+      printf("   START Receive frame %3d\n", i);
+      n = recvfrom(sd, &a_frame, sizeof(a_frame), 0, 
+            (struct sockaddr *)&client, &client_len);
+      if(n == -1) {
+         fprintf(stderr, "   END [FAILURE] Frame receive error: %d\n", errno);
          return -1;
+      }
+      seq = a_frame.seq;
+      data_len = a_frame.len;
+      printf("   END Received frame with result: %d, SEQ #%d, LEN %d\n", n, seq, data_len);
+
+      if(seq == -1) {
+         printf("END [FAILURE] Expected SEQ #0, got SEQ #%d", seq);
+         return -1;
+      }
+
+      memcpy((buf+i), a_frame.data, MAXLEN);
    }
-   printf("END [SUCCESS] Receive UDP, n=%d\n", n);
-   return n;
+
+   // if ((n = recvfrom(sd, buf, MAXLEN, 0, 
+   // (struct sockaddr *)&client, &client_len)) < 0) {
+   //       fprintf(stderr, "END [FAILURE] Can't receive datagram\n");
+   //       return -1;
+   // }
+   printf("END [SUCCESS] Receive UDP, %d Frames\n", i);
+   return i;
 }

@@ -20,7 +20,7 @@ void print_usage(char *pname)
 
 int main(int argc, char **argv)
 {
-   int    sd, client_len, n, port = SERVER_UDP_PORT, dropRate, protocol;
+   int    sd, client_len, n, port = SERVER_UDP_PORT, dropRate, protocol, num_frames;
    char    buf[MAXLEN], *pname;
    struct    sockaddr_in    server, client;
 
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
    server.sin_port = htons(port);
    server.sin_addr.s_addr = htonl(INADDR_ANY);
    if (bind(sd, (struct sockaddr *)&server, 
-   sizeof(server)) == -1) {
+            sizeof(server)) == -1) {
       fprintf(stderr, "END [FAILURE] Can't bind name to socket\n");
       exit(1);
    }
@@ -83,11 +83,11 @@ int main(int argc, char **argv)
       // }
       // printf("END [SUCCESS] Receive UDP\n");
 
-      if( receive_udp(client_len, client, sd, buf) ) {
+      if( (num_frames = receive_udp(client_len, client, sd, buf)) == -1 ) {
          continue;
       }
 
-      send_udp(client_len, client, sd, buf, n, dropRate);
+      send_udp(client_len, client, sd, buf, num_frames, dropRate);
    }
    close(sd);
    return(0);
