@@ -1,4 +1,4 @@
-	/* This page contains the client program. The following one contains the
+  /* This page contains the client program. The following one contains the
  * server program. Once the server has been compiled and started, clients
  * anywhere on the Internet can send commands (file names) to the server.
  * The server responds by opening and returning the entire file requested.
@@ -10,18 +10,19 @@
 #include <netdb.h>
  #include <stdio.h>
 
-#define SERVER_PORT 12345		/* arbitrary, but client and server must agree */
-#define BUF_SIZE 4096			/* block transfer size */
+#define SERVER_PORT 12345   /* arbitrary, but client and server must agree */
+#define BUF_SIZE 4096     /* block transfer size */
 
 int main(int argc, char **argv)
 {
   int c, s, bytes;
-  char buf[BUF_SIZE];			/* buffer for incoming file */
-  struct hostent *h;			/* info about server */
-  struct sockaddr_in channel;		/* holds IP address */
+  char buf[BUF_SIZE];     /* buffer for incoming file */
+  char obuf[BUF_SIZE];    /* buffer for outgoing file */
+  struct hostent *h;      /* info about server */
+  struct sockaddr_in channel;   /* holds IP address */
 
   if (argc != 3) fatal("Usage: client server-name file-name");
-  h = gethostbyname(argv[1]);		/* look up host's IP address */
+  h = gethostbyname(argv[1]);   /* look up host's IP address */
   if (!h) fatal("gethostbyname failed");
 
   s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -39,12 +40,15 @@ int main(int argc, char **argv)
   /* Go get the file and write it to a local file 
      (new or existing, overwritten) of the same name. */
   FILE *dst;
-  dst = fopen(argv[2], "w+");
+
+  sprintf(obuf, "out/%s", argv[2]);
+
+  dst = fopen(obuf, "w+");
   while (1) {
-        bytes = read(s, buf, BUF_SIZE);	/* read from socket */
-        if (bytes <= 0) exit(0);	/* check for end of file */
+        bytes = read(s, buf, BUF_SIZE); /* read from socket */
+        if (bytes <= 0) exit(0);  /* check for end of file */
         fwrite(buf, sizeof(char), bytes, dst);
-        // write(1, buf, bytes);		/* write to standard output */
+        // write(1, buf, bytes);    /* write to standard output */
   }
   fclose(dst);
 }
