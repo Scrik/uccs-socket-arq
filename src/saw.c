@@ -258,10 +258,12 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
       if(n == -1) {
          printf("   END [FAILURE] Frame receive error: %d - %s\n", errno, strerror(errno));
          if(retries > MAX_RETRIES) {
+            printf("MAX RETRIES EXCEEDED!\n");
             // Forget it, maybe it worked!
             break;
          }
          retries++;
+         printf("   RETRIES REMAINING: %d\n", MAX_RETRIES - retries);
          continue;   // Try again
          // return -1;
       }
@@ -318,6 +320,7 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
       } else {
          printf("FIN!\n");
       }
+      retries = 0;   // Forward progress! Restart the retry counter
       printf("   END Received frame with result: %d, SEQ #%d, FRAMES %d, LEN %d\n", n, seq, num_frames, a_frame.len);
    }
 
