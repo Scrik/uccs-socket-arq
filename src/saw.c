@@ -124,6 +124,7 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                if(retries < MAX_RETRIES) {
                   // printf("RETRY\n");
                   retries++;
+                  printf(".");
                   continue;
                } else {
                   // printf("   END [FAILURE] ACK maxed out retries\n");
@@ -178,6 +179,7 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                            if(retries < MAX_RETRIES) {
                               // printf("RETRY\n");
                               retries++;
+                              printf(".");
                               continue;
                            } else {
                               // printf("      END [FAILURE] ACK maxed out retries\n");
@@ -188,6 +190,7 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                            if(retries < MAX_RETRIES) {
                               // printf("RETRY\n");
                               retries++;
+                              printf(".");
                               continue;
                            } else {
                               // printf("      END [FAILURE] ACK maxed out retries\n");
@@ -271,6 +274,7 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
             break;
          }
          retries++;
+         printf(".");
          // printf("   RETRIES REMAINING: %d\n", MAX_RETRIES - retries);
          continue;   // Try again
          // return -1;
