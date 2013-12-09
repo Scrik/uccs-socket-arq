@@ -41,6 +41,7 @@ int main(int argc, char **argv)
           argc--;
           argv++;
        } else {
+        printf("a\n");
           print_usage(pname);
           exit(1);
        }
@@ -48,21 +49,31 @@ int main(int argc, char **argv)
     if (argc > 0) {
        host = *argv;
        if (--argc > 0) {
-        if(strcmp(*argv, "-p") == 0)
+          printf("argv1 = %s\n", *argv);
+        if(strcmp(*++argv, "-p") == 0) {
+          printf("argv = %s\n", *argv);
           port = atoi(*++argv);
+          argc -= 2;
+        } else {
+          argv--;
+        }
        } else {
+        printf("b\n");
         print_usage(pname);
         exit(1);
        }
+       printf("size %d, host %s, port %d\n", data_size, host, port);
        if(argc == 3) {
         src_filename = *++argv;
         dst_filename = *++argv;
         protocol = atoi(*++argv);
        } else {
+        printf("c %d\n", argc);
         print_usage(pname);
         exit(1);
        }
     } else {
+        printf("d\n");
        print_usage(pname);
        exit(1);
     }
@@ -139,9 +150,12 @@ printf("SEND: '%05d,%s'\n", data_size, src_filename);
 
     close(sd);
 
-    printf("START Dump %d B of echo data into file: %s\n", bytes, dst_filename);
     data_size = writeFile(rbuf, dst_filename, bytes);
-    printf("END Dumped %d B of echo data into file\n", data_size);
+    // printf("END Dumped %d items into file\n", data_size);
+    if(data_size == 1)
+      printf("Dumped %d B of data into file: %s\n", bytes, dst_filename);
+    else 
+      printf("Problem dumping %d B of data into file: %s\n", bytes, dst_filename);
 
     return(0);
 }

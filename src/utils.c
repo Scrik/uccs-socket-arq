@@ -62,7 +62,7 @@ int bufferRandom(char *sbuf, int data_size)
 
 int readFile(char *sbuf, char *filename) 
 {
-  printf("   START Read from file: %s\n", filename);
+  // printf("   START Read from file: %s\n", filename);
 
   int bytes, total_bytes = 0, fd;
   /* Get and return the file. */
@@ -76,7 +76,7 @@ int readFile(char *sbuf, char *filename)
   }
   close(fd);         /* close file */
   
-  printf("   END Read %d bytes\n", total_bytes);
+  // printf("   END Read %d bytes\n", total_bytes);
 
   return total_bytes;
 }
@@ -104,11 +104,11 @@ int writeFile(char *sbuf, char *filename, int filesize)
 
   int bytes;
   FILE *dst;
-  printf("   START Write to file: %s, size: %d\n", filename, filesize);
+  // printf("   START Write to file: %s, size: %d\n", filename, filesize);
   dst = fopen(filename, "w+");
   bytes = fwrite(sbuf, filesize*sizeof(char), 1, dst);
   fclose(dst);
-  printf("   END Wrote %d bytes\n", bytes);
+  // printf("   END Wrote %d bytes\n", bytes);
 
   return bytes;
 }
