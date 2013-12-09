@@ -20,6 +20,8 @@ echo "###                                                                       
 
 # Clear the pkg directory to avoid confusion
 mkdir out -p
+mkdir pkg -p
+mkdir pkg/udp -p
 rm out/* -rf
 rm pkg/*
 mkdir out/protocol-1 -p	# SAW
@@ -110,9 +112,9 @@ if [ $DIFF_CODE_SUM -eq 0 ]
 then
 	RESULT="SUCCESS[  YAY!   ]"
 	# Package the SUCCESSFUL results
-	cp client.o pkg/.
-	cp server.o pkg/.
-	tar -zcvf pkg/$OUT_DIR.tar.gz $OUT_DIR
+	cp client.o pkg/udp/.
+	cp server.o pkg/udp/.
+	tar -zcvf pkg/udp/$OUT_DIR.tar.gz $OUT_DIR
 elif [ $DIFF_CODE_SUM -eq 1 ]
 then
 	RESULT="FAILURE[DIFFERENT]"
