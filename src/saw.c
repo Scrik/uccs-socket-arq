@@ -257,7 +257,7 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
             (struct sockaddr *)client, client_len);
       if(n == -1) {
          printf("   END [FAILURE] Frame receive error: %d - %s\n", errno, strerror(errno));
-         if(retries > 15) {
+         if(retries > MAX_RETRIES) {
             // Forget it, maybe it worked!
             break;
          }

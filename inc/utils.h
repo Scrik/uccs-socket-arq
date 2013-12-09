@@ -8,7 +8,7 @@
 #define GBN_TIMER     			1 		// Time after which to process ACKs
 #define GBN_TIMEOUT_MS			500		// Timeout (ms) for each datagram (should be short)
 #define GBN_WINDOW_SIZE			5 		// How many outstanding frames are allowed?
-#define MAX_RETRIES				15
+#define MAX_RETRIES				50
 
 // Id of protocols
 #define STOP_AND_WAIT			1
