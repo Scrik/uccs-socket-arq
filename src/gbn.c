@@ -316,7 +316,7 @@ int receive_gbn(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
        * Check end condition (the sending of a final, "FIN" frame)
        ***/
        printf("   DONE? an_ack.seq=%d > %d=num_frames\n", (an_ack.seq), num_frames);
-       if(an_ack.seq > num_frames) {
+       if( num_frames == -1 || an_ack.seq > num_frames) {
          break;
        }
     } // loop

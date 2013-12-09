@@ -67,7 +67,10 @@ int readFile(char *sbuf, char *filename)
   int bytes, total_bytes = 0, fd;
   /* Get and return the file. */
   fd = open(filename, O_RDONLY); /* open the file */
-  if (fd < 0) fatal("read open failed");
+  if (fd < 0) {
+    printf("read open failed\n");
+    return 0;
+  }
 
   while (1) {
     bytes = read(fd, sbuf, BUF_SIZE); /* read from file */
