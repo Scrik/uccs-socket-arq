@@ -61,15 +61,15 @@ int send_gbn(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    a_frame.seq=0;
 
 
-   // GBN_TIMEOUT_MS is in milliseconds
-   timeout.tv_usec = 1000*GBN_TIMEOUT_MS;
-   printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_usec/(1000), GBN_TIMEOUT_MS );
-   // First, configure a GBN_TIMEOUT_MS
-   if(setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, 
-                  &timeout, sizeof(timeout) ) < 0){
-      printf("END [FAILURE] Error setting timeout. errno: %d - %s\n", errno, strerror(errno) );
-      return -1;
-   }
+   // // GBN_TIMEOUT_MS is in milliseconds
+   // timeout.tv_usec = 1000*GBN_TIMEOUT_MS;
+   // printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_usec/(1000), GBN_TIMEOUT_MS );
+   // // First, configure a GBN_TIMEOUT_MS
+   // if(setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, 
+   //                &timeout, sizeof(timeout) ) < 0){
+   //    printf("END [FAILURE] Error setting timeout. errno: %d - %s\n", errno, strerror(errno) );
+   //    return -1;
+   // }
 
    // Iterate until the entire file is sent
    while(1) {
@@ -91,8 +91,13 @@ int send_gbn(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                (a_frame.seq - last_ack) < GBN_WINDOW_SIZE   // Don't send more than the window allows
             )
          {
-            a_frame.len = min( data_size, bytes_left );
             a_frame.num_frames = num_frames;
+            if(a_frame.seq+1 == num_frames) {
+               // Last frame might have a LEN < data_size
+               a_frame.len = bytes % data_size;
+            } else {
+               a_frame.len = data_size;
+            }
 
             printf("   START Send Frame: SEQ #%d, FRAMES %d, LEN %d B\n", a_frame.seq, a_frame.num_frames, a_frame.len);
 
@@ -130,7 +135,8 @@ int send_gbn(int client_len, struct sockaddr_in client, int sd, char *buf, int n
           ***/
           printf("   START Check for ACK #%d\n", last_ack+1);
 
-          n = recvfrom(sd, &an_ack, sizeof(an_ack), 0, 
+          // Set MSG_DONTWAIT, because we never want to block waiting for an ACK
+          n = recvfrom(sd, &an_ack, sizeof(an_ack), MSG_DONTWAIT, 
                 (struct sockaddr *)&client, &client_len);
           if(n == -1) {
              printf("   END [ IGNORE] ACK receive error: %d - %s\n", errno, strerror(errno));
@@ -166,6 +172,8 @@ int send_gbn(int client_len, struct sockaddr_in client, int sd, char *buf, int n
          if(elapsed > GBN_TIMER) {
             // Timer expired! Get out of here and fall through to GBN processing
             break;
+         } else {
+            sleep(0.1);
          }
        } // inner loop
 
@@ -173,6 +181,7 @@ int send_gbn(int client_len, struct sockaddr_in client, int sd, char *buf, int n
       /***********************************************************************************************
        * Time expired, so process ACKs and decide if we need to go back, and if so what's N
        ***/
+       printf("<============ PSEUDO-INTERRUPT - PROCESS ACKs ============>\n");
        if( last_ack == num_frames ) {
          // The ACK SEQ #s are always the *next* frame they want. 
          // If the next frame it wants is one past the total, that means it's time to send a "FIN",
@@ -187,11 +196,16 @@ int send_gbn(int client_len, struct sockaddr_in client, int sd, char *buf, int n
          } else {
             printf("   END [SUCCESS] Sent FIN\n");
             // We don't care if they ACK the FIN, so just break
+            printf("<=========================================================>\n");
             break;
          }
        } else {
          // More FRAMES to send. Just loop...
+         n = a_frame.seq - last_ack;
+         a_frame.seq = last_ack;
+         printf("   GO BACK %2d \n", n);
        }
+       printf("<=========================================================>\n");
 
    }  // outer loop
 
@@ -205,9 +219,8 @@ int receive_gbn(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
    struct frame a_frame;
    struct ack an_ack;
    struct timeval timeout;
-   int time_diff=0, retries=0;
+   int time_diff=0, retries=0, recv_flag=0;
 
-   timeout.tv_usec=0;
 
    // This will always have the next Frame needed
    an_ack.seq = 0;
@@ -223,7 +236,16 @@ int receive_gbn(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
        * Check for a FRAME
        ***/
       printf("   START Receive frame (should be SEQ #%d)\n", an_ack.seq);
-      n = recvfrom(sd, &a_frame, sizeof(a_frame), 0, 
+
+      if(an_ack.seq <= 0) {
+         // Block while we wait for a client to connect
+         recv_flag=0;
+      } else {
+         // Otherwise, don't block
+         recv_flag=MSG_DONTWAIT;
+      }
+
+      n = recvfrom(sd, &a_frame, sizeof(a_frame), recv_flag, 
             (struct sockaddr *)client, client_len);
       if(n == -1) {
          printf("   END [FAILURE] Frame receive error: %d - %s\n", errno, strerror(errno));
@@ -234,17 +256,6 @@ int receive_gbn(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
           * Only set the timeout once, and make sure to set it
           * after we receive the first FRAME
           */
-         if(timeout.tv_usec == 0) {
-            // GBN_TIMEOUT_MS is in milliseconds
-            timeout.tv_usec = 1000*GBN_TIMEOUT_MS;
-            printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_usec/(1000), GBN_TIMEOUT_MS );
-            // First, configure a GBN_TIMEOUT_MS
-            if(setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, 
-                           &timeout, sizeof(timeout) ) < 0){
-               printf("END [FAILURE] Error setting timeout. errno: %d - %s\n", errno, strerror(errno) );
-               return -1;
-            }
-         }
 
          // Got the FRAME
          if(a_frame.seq == an_ack.seq) {
@@ -267,6 +278,7 @@ int receive_gbn(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
                an_ack.bytes = a_frame.len;
                an_ack.seq++;
                bytes_recvd += a_frame.len;
+               printf("      INFO Bytes received = %d B\n", bytes_recvd);
                printf("   END [SUCCESS] Received Frame: SEQ #%d, FRAMES %d, LEN %d B\n", a_frame.seq, a_frame.num_frames, a_frame.len);
             }
 
@@ -309,14 +321,14 @@ int receive_gbn(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
     } // loop
 
    // Unset the timeout for the next time we want to blockingly wait for a client
-   timeout.tv_usec = 0;
-   printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_usec/(1000), 0 );
-   if(setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, 
-                  &timeout, sizeof(timeout) ) < 0){
-      printf("END [FAILURE] Error setting timeout. errno: %d - %s\n", errno, strerror(errno) );
-      return -1;
-   }
+   // timeout.tv_usec = 0;
+   // printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_usec/(1000), 0 );
+   // if(setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, 
+   //                &timeout, sizeof(timeout) ) < 0){
+   //    printf("END [FAILURE] Error setting timeout. errno: %d - %s\n", errno, strerror(errno) );
+   //    return -1;
+   // }
 
-   printf("END [SUCCES] GBN Received %d frames, with total size %d B\n", num_frames, bytes_recvd);
+   printf("END [SUCCESS] GBN Received %d frames, with total size %d B\n", num_frames, bytes_recvd);
    return bytes_recvd;
 }
