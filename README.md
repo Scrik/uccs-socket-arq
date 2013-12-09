@@ -6,9 +6,23 @@
 
 If you'd like to build and run a handful of permutations of the client and server, simply run:
 
+
+### UDP
+
+This dumps useful output files to `./pkg/udp`
+
 ```
 ./configure.sh
 ./udp.sh
+```
+
+### TCP
+
+This dumps useful output files to `./pkg/tcp`. It serves up `README.md` then `PDDModel_Network99.pdf`.
+
+```
+./configure.sh
+./tcp.sh
 ```
 
 This runs 16 permutations of frame size, protocol, loss rate, and files. Useful logs are dumped in `./out`, including the retrieved files, and the calculated `diff` of what the server sent from the input file.
@@ -27,7 +41,6 @@ make udp
 This will generate `client.o` and `server.o` in the top-level directory. Additionally, peripheral binaries will be generated in `./bin`.
 
 ## Usage
-
 
 ### UDP
 
@@ -51,3 +64,16 @@ Usage: ./client.o [-s data_size] host [-p port] src_filename dst_filename protoc
 
 ### TCP
 
+### Server
+
+```
+Usage: ./server.o
+```
+
+### Client
+
+Outputs the file to `./out`
+
+```
+Usage: ./client.o hostname file-name
+```
