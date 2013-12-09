@@ -45,7 +45,7 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
 
    // Modify the buffer to simulate dropped packets
    int m = 0;  // Size of modified buffer
-   int i, j, r, n;   // i: index of original buffer
+   int r, n;   // i: index of original buffer
                // j: index of new buffer
                // r: random number deciding whether to drop packet
    char droppedBuf[num_frames];
@@ -56,8 +56,18 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    int time_diff=0, retries;
    int bytes_sent = 0, bytes_left;
 
+   int mem_offset, mem_bytes;
+
    // TIMEOUT_MS is in milliseconds
    timeout.tv_sec = TIMEOUT;
+
+   // Randomize it
+   r = 1 + (rand() % 2);
+   if( r ==0 )
+      timeout.tv_sec++;
+   else
+      timeout.tv_sec--;
+
    timeout.tv_usec = 0;
    printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_sec*1000 + timeout.tv_usec/(1000), TIMEOUT*1000 );
    // First, configure a TIMEOUT_MS
@@ -67,24 +77,38 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
       return -1;
    }
 
+   a_frame.seq = 0;
    a_frame.num_frames = num_frames;
-
-   for(i=0, j=0; i <= num_frames; i++) {
-
       bytes_left = bytes - bytes_sent;
       retries = 0;
 
-      a_frame.seq = i;
-      a_frame.len = min( data_size, bytes_left );
+   // for(i=0, j=0; i <= num_frames; i++) {
+
+   //    bytes_left = bytes - bytes_sent;
+   //    retries = 0;
+
+   //    a_frame.seq = i;
+
+      // a_frame.len = min( data_size, bytes_left );
       // a_frame.num_frames = num_frames;
 
       while(1) {
+         if(a_frame.seq+1 == num_frames) {
+            a_frame.len = bytes % data_size;
+            printf("!!!! last frame, size is only: %d\n", a_frame.len);
+         } else if(a_frame.seq+1 < num_frames) {
+            a_frame.len = data_size;
+         } else {
+            a_frame.len = 0;  // FIN
+         }
          printf("   START Send Frame: SEQ #%d, FRAMES %d, LEN %d B\n", a_frame.seq, a_frame.num_frames, a_frame.len);
          gettimeofday(&start, NULL); /* start delay measurement */
 
-         if(i < num_frames) {
-            printf("      MEMCPY %d B @ index %d\n", a_frame.len, (i*data_size) );
-            memcpy(a_frame.data, (buf+(i*data_size)), a_frame.len );
+         if(a_frame.seq < num_frames) {
+            mem_offset = a_frame.seq * data_size;
+            mem_bytes = a_frame.len;
+            printf("      MEMCPY %d B @ index %d\n", mem_bytes, mem_offset );
+            memcpy(a_frame.data, (buf+mem_offset), mem_bytes );
          } else {
             printf("FIN!\n");
          }
@@ -106,10 +130,30 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                   return -1;
                }
             }
+            if(a_frame.seq < num_frames) {
+               // We have n fewer bytes to send
+               bytes_sent += a_frame.len;
+            } else {
+               printf("FIN\n");
+            }
+
+            // droppedBuf[j] = buf[i];
+            // j++;
+
+            printf("   END Sent frame with result: %d\n", n);
+
+            // break;
+         } else {
+            // j++;
+            printf("   -X- DROP (Frame #%d)\n", a_frame.seq);
+            // By not copying over the element, we "drop" it
+            // DO NOTHING, intentionally
+         }
 
             /********** WAIT FOR ACK ******************************/
-            if( i == num_frames ) {
+            if( a_frame.seq == num_frames ) {
                printf("      SKIPPING Wait for ACK to avoid corner case\n");
+               break;
 
             } else {
                printf("      START Wait for ACK #%d\n", a_frame.seq);
@@ -117,7 +161,7 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                   n = recvfrom(sd, &an_ack, sizeof(an_ack), 0, 
                         (struct sockaddr *)&client, &client_len);
                   if(n == -1) {
-                     if(i < num_frames) {
+                     if(a_frame.seq < num_frames) {
                         gettimeofday(&end, NULL); /* end delay measurement */
 
                         time_diff = delay(start, end);
@@ -152,34 +196,29 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                   // Was it actually an ACK?
                   if(an_ack.len == -1) {
                      if(an_ack.seq != a_frame.seq) {
-                        printf("      END [FAILURE] ACK receive error: expected ACK #%d, got ACK #%d\n", a_frame.seq, an_ack.seq);
-                        return -1;
+                        if(an_ack.seq == a_frame.seq -1 ) {
+                           printf("      END [ IGNORE] ACK tells us we dropped a FRAME: expected ACK #%d, got ACK #%d\n", a_frame.seq, an_ack.seq);
+                           a_frame.seq = an_ack.seq;
+                        } else {
+                           printf("      END [FAILURE] ACK receive error: expected ACK #%d, got ACK #%d\n", a_frame.seq, an_ack.seq);
+                           return -1;
+                        }
                      }
                   } else {
                      printf("      END [ HMM.. ] ACK receive error: expected ACK #%d, got FRAME #%d\n", a_frame.seq, an_ack.seq);
                   }
-               printf("      END Got ACK #%d\n", a_frame.seq);
+               printf("      END Got ACK #%d (FRAME #%d)\n", an_ack.seq, a_frame.seq++);
+               if(an_ack.seq >= num_frames) {
+                  printf("FIN! #%d\n", an_ack.seq);
+                  // i = a_frame.seq;
+                  break;
+               }
             }
             /******************************************************/
 
-            // We have n fewer bytes to send
-            bytes_sent += a_frame.len;
-
-            droppedBuf[j] = buf[i];
-            j++;
-
-            printf("   END Sent frame with result: %d\n", n);
-
-            break;
-         } else {
-            j++;
-            printf("   -X- DROP (Frame #%d)\n", a_frame.seq);
-            // By not copying over the element, we "drop" it
-            // DO NOTHING, intentionally
-         }
       } // while(1)
-   } // for each frame
-   printf("END Tried to send %d frames. Dropped %d frames\n", num_frames, num_frames-j);
+   // } // for each frame
+   printf("END Tried to send %d frames.\n", num_frames);
 
    print_buf(buf, bytes_sent);
 
@@ -188,11 +227,12 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
 
 int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, int *data_size, int dropRate)
 {
-   int n, i=0, seq = -1, num_frames=1, bytes_recvd=0, r;
+   int n, i=0, seq = -1, num_frames=1, bytes_recvd=0, r, last_index_counted=-1;
    struct frame a_frame;
    struct ack an_ack;
    struct timeval timeout;
    int time_diff=0, retries=0;
+   int mem_offset, mem_bytes;
 
    // TIMEOUT_MS is in milliseconds
    // timeout.tv_sec = 5;
@@ -216,7 +256,8 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
             (struct sockaddr *)client, client_len);
       if(n == -1) {
          printf("   END [FAILURE] Frame receive error: %d - %s\n", errno, strerror(errno));
-         return -1;
+         continue;   // Try again
+         // return -1;
       }
       if( a_frame.len == -1 ) {
          printf("   END [FAILURE] Expected Frame SEQ #%d, got ACK #%d\n", i, a_frame.seq);
@@ -257,9 +298,17 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
          /******************************************************/
 
       if(a_frame.seq < num_frames) {
-         printf("      MEMCPY %d B @ index %d\n", a_frame.len, (a_frame.seq*(*data_size)) );
-         memcpy((buf+(a_frame.seq*(*data_size))), a_frame.data, *data_size);
-         bytes_recvd += a_frame.len;
+         printf("FRAME #%d,  last_index_counted=%d\n", a_frame.seq, last_index_counted);
+         if(last_index_counted == a_frame.seq) {
+            printf("      NO_memcpy I think we already added these!\n");
+         } else {
+            mem_offset = (a_frame.seq*(*data_size));
+            mem_bytes = a_frame.len;
+            printf("      MEMCPY %d B @ index %d\n", mem_bytes, mem_offset );
+            memcpy((buf+mem_offset), a_frame.data, mem_bytes);
+            bytes_recvd += a_frame.len;
+            last_index_counted = a_frame.seq;
+         }
       } else {
          printf("FIN!\n");
       }
