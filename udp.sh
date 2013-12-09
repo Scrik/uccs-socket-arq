@@ -28,7 +28,7 @@ mkdir out/protocol-2 -p # GBN
 echo "Compiling and dumping output to: '$OUT_DIR/build.log'..."
 make udp > $OUT_DIR/build.log 2>&1
 EXIT_CODE=$?
-echo " '-> Make exited with code: $EXIT_CODE"
+echo "Make exited with code: $EXIT_CODE"
 if [ $EXIT_CODE -ne 0 ]
 then
 	echo "EXITING! Make failed"
@@ -39,16 +39,18 @@ fi
 for protocol in "${PROTOCOLS[@]}"
 do
 
+echo "Protocol: $protocol"
+
 	# Iterate over the various drop rates
 	for dropRate in "${DROP_RATES[@]}"
 	do
 		serverLogName="$OUT_DIR/protocol-$protocol/loss-$dropRate.server.log"
 
-		echo "Starting server in background and logging output to '$serverLogName'..."
+		echo "   Starting server in background and logging output to '$serverLogName'..."
 		# Start the server in bkd and get its PID
 		./server.o $dropRate $protocol > $serverLogName &
 		PID_S=$!
-		echo " '-> Server started with PID $PID_S"
+		echo "   Server started with PID $PID_S"
 
 		# Iterate over the input files
 		for filename in "${FILENAMES[@]}"
@@ -56,27 +58,24 @@ do
 			clientLogName="$OUT_DIR/protocol-$protocol/loss-$dropRate.client.log"
 			outputFilename="$OUT_DIR/protocol-$protocol/loss-$dropRate.$filename"
 
-			echo " "
-			echo "********************************************************************************"
-			echo "* FILE: $filename, DROP_RATE: $dropRate"
-			echo "***"
-			echo " "
-			echo "   Starting client in background and logging output to '$clientLogName'..."
-			echo "   Saving echo file to '$outputFilename'."
+			echo "      Starting client in background and logging output to '$clientLogName'..."
+			echo "      Saving echo file to '$outputFilename'."
 			./client.o -s $FRAME_SIZE $(hostname) $filename $outputFilename $protocol > $clientLogName &
 			PID_C=$!
-			echo "    '-> Client started with PID $PID_C"
+			echo "      Client started with PID $PID_C"
 
-			echo "   Waiting for client to stop running..."
+			echo "      Waiting for client to stop running @$PID_C..."
+			echo -n "      "
 			while kill -0 $PID_C > /dev/null 2>&1; do
-				echo -e "."
+				echo -n "."
 				sleep 0.5
 			done
-			echo "    '-> Client done."
+			echo " "
+			echo "      Client done."
 
-			echo "   Dumping DIFF result to '$outputFilename.diff'..." 
+			echo "      Dumping DIFF result to '$outputFilename.diff'..." 
 			diff "$filename" "$outputFilename" > "$outputFilename.diff"
-			DIFF_protocol-$protocol/loss-CODE=$?
+			DIFF_CODE=$?
 			DIFF_CODE_SUM=$((DIFF_CODE_SUM + $DIFF_CODE))
 			RESULT="FAILURE[         ]"
 			if [ $DIFF_CODE -eq 0 ]
@@ -91,12 +90,12 @@ do
 			else
 				RESULT="FAILURE[ UNKNOWN ]"
 			fi
-			echo "*********************************** $RESULT ************************************"
+			echo "   '-> $RESULT"
 		done
 
-		echo "Forceably stop the server..."
+		echo "   Forceably stop the server @$PID_S..."
 		kill $PID_S
-		echo " '-> Server done."
+		echo "   Server done."
 
 	done
 done
@@ -118,7 +117,5 @@ else
 	RESULT="FAILURE[ UNKNOWN ]"
 fi
 
-echo " "
-echo "############################################# $RESULT ##############################################"
-echo " "
+echo " '-> $RESULT"
 

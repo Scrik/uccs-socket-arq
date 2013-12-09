@@ -173,7 +173,8 @@ int send_gbn(int client_len, struct sockaddr_in client, int sd, char *buf, int n
             // Timer expired! Get out of here and fall through to GBN processing
             break;
          } else {
-            sleep(0.1);
+            printf("      SLEEP");
+            nanosleep(0.25*1000*1000*1000);
          }
        } // inner loop
 
