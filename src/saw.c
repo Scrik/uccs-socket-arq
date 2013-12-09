@@ -57,15 +57,17 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    int bytes_sent = 0, bytes_left;
 
    // TIMEOUT_MS is in milliseconds
-   timeout.tv_sec = 5;
+   timeout.tv_sec = TIMEOUT;
    timeout.tv_usec = 0;
-   printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_sec*1000 + timeout.tv_usec/(1000), TIMEOUT_MS );
+   printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_sec*1000 + timeout.tv_usec/(1000), TIMEOUT*1000 );
    // First, configure a TIMEOUT_MS
    if(setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, 
                   &timeout, sizeof(timeout) ) < 0){
       printf("END [FAILURE] Error setting timeout. errno: %d - %s\n", errno, strerror(errno) );
       return -1;
    }
+
+   a_frame.num_frames = num_frames;
 
    for(i=0, j=0; i <= num_frames; i++) {
 
@@ -74,7 +76,7 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
 
       a_frame.seq = i;
       a_frame.len = min( data_size, bytes_left );
-      a_frame.num_frames = num_frames;
+      // a_frame.num_frames = num_frames;
 
       while(1) {
          printf("   START Send Frame: SEQ #%d, FRAMES %d, LEN %d B\n", a_frame.seq, a_frame.num_frames, a_frame.len);
@@ -106,53 +108,58 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
             }
 
             /********** WAIT FOR ACK ******************************/
-            printf("      START Wait for ACK #%d\n", a_frame.seq);
+            if( i == num_frames ) {
+               printf("      SKIPPING Wait for ACK to avoid corner case\n");
 
-               n = recvfrom(sd, &an_ack, sizeof(an_ack), 0, 
-                     (struct sockaddr *)&client, &client_len);
-               if(n == -1) {
-                  if(i < num_frames) {
-                     gettimeofday(&end, NULL); /* end delay measurement */
+            } else {
+               printf("      START Wait for ACK #%d\n", a_frame.seq);
 
-                     time_diff = delay(start, end);
+                  n = recvfrom(sd, &an_ack, sizeof(an_ack), 0, 
+                        (struct sockaddr *)&client, &client_len);
+                  if(n == -1) {
+                     if(i < num_frames) {
+                        gettimeofday(&end, NULL); /* end delay measurement */
 
-                     printf("         INFO Time diff = %d\n", time_diff);
-                     if( TIMEOUT_MS < time_diff ) {
-                        printf(stderr, "      END [TIMEOUT] ACK receive error: %d - %s\n", errno, strerror(errno));
-                        if(retries < MAX_RETRIES) {
-                           printf("RETRY\n");
-                           retries++;
-                           continue;
+                        time_diff = delay(start, end);
+
+                        printf("         INFO Time diff = %d\n", time_diff);
+                        if( TIMEOUT_MS < time_diff ) {
+                           printf(stderr, "      END [TIMEOUT] ACK receive error: %d - %s\n", errno, strerror(errno));
+                           if(retries < MAX_RETRIES) {
+                              printf("RETRY\n");
+                              retries++;
+                              continue;
+                           } else {
+                              printf("      END [FAILURE] ACK maxed out retries\n");
+                              return -1;
+                           }
                         } else {
-                           printf("      END [FAILURE] ACK maxed out retries\n");
-                           return -1;
+                           printf("      END [FAILURE] ACK receive error: %d - %s\n", errno, strerror(errno));
+                           if(retries < MAX_RETRIES) {
+                              printf("RETRY\n");
+                              retries++;
+                              continue;
+                           } else {
+                              printf("      END [FAILURE] ACK maxed out retries\n");
+                              return -1;
+                           }
                         }
                      } else {
-                        printf("      END [FAILURE] ACK receive error: %d - %s\n", errno, strerror(errno));
-                        if(retries < MAX_RETRIES) {
-                           printf("RETRY\n");
-                           retries++;
-                           continue;
-                        } else {
-                           printf("      END [FAILURE] ACK maxed out retries\n");
-                           return -1;
-                        }
+                        printf("      END [ IGNORE] Error receiving FINACK: %d - %s\n", errno, strerror(errno));
+                     }
+                  }
+
+                  // Was it actually an ACK?
+                  if(an_ack.len == -1) {
+                     if(an_ack.seq != a_frame.seq) {
+                        printf("      END [FAILURE] ACK receive error: expected ACK #%d, got ACK #%d\n", a_frame.seq, an_ack.seq);
+                        return -1;
                      }
                   } else {
-                     printf("      END [ IGNORE] Error receiving FINACK: %d - %s\n", errno, strerror(errno));
+                     printf("      END [ HMM.. ] ACK receive error: expected ACK #%d, got FRAME #%d\n", a_frame.seq, an_ack.seq);
                   }
-               }
-printf(" ======> an_ack.len=%d, a_frame.len=%d\n", an_ack.len, a_frame.len );
-               // Was it actually an ACK?
-               if(an_ack.len == -1) {
-                  if(an_ack.seq != a_frame.seq) {
-                     printf("      END [FAILURE] ACK receive error: expected ACK #%d, got ACK #%d\n", a_frame.seq, an_ack.seq);
-                     return -1;
-                  }
-               } else {
-                  printf("      END [ HMM.. ] ACK receive error: expected ACK #%d, got FRAME #%d\n", a_frame.seq, an_ack.seq);
-               }
-            printf("      END Got ACK #%d\n", a_frame.seq);
+               printf("      END Got ACK #%d\n", a_frame.seq);
+            }
             /******************************************************/
 
             // We have n fewer bytes to send
@@ -162,11 +169,6 @@ printf(" ======> an_ack.len=%d, a_frame.len=%d\n", an_ack.len, a_frame.len );
             j++;
 
             printf("   END Sent frame with result: %d\n", n);
-
-            // Successfully sent and got ACK, so go to next frame, UNLESS THIS IS THE LAST FRAME
-            if(a_frame.seq+1 == num_frames) {
-               // Special case -- send
-            }
 
             break;
          } else {
@@ -216,6 +218,13 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
          printf("   END [FAILURE] Frame receive error: %d - %s\n", errno, strerror(errno));
          return -1;
       }
+      if( a_frame.len == -1 ) {
+         printf("   END [FAILURE] Expected Frame SEQ #%d, got ACK #%d\n", i, a_frame.seq);
+         a_frame.seq = -1;
+         continue;
+      }
+      printf("      FRAME SEQ #%d LEN %d B %d FRAMES\n", a_frame.seq, a_frame.len, a_frame.num_frames);
+
       seq = a_frame.seq;
       *data_size = max( *data_size, a_frame.len);
       num_frames = a_frame.num_frames;
