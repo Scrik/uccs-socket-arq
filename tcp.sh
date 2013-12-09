@@ -13,7 +13,7 @@ mkdir out -p
 mkdir pkg -p
 mkdir pkg/tcp -p
 rm out/* -rf
-rm pkg/tcp*
+rm pkg/tcp/*
 
 echo "Compiling and dumping output to: '$OUT_DIR/build.log'..."
 make tcp > $OUT_DIR/build.log 2>&1
@@ -29,7 +29,7 @@ serverLogName="$OUT_DIR/protocol-$protocol/size-$frameSize.loss-$dropRate.server
 
 echo "   Starting server in background and logging output to '$serverLogName'..."
 # Start the server in bkd and get its PID
-./server.o $dropRate $protocol > $serverLogName &
+./server.o &
 PID_S=$!
 echo "   Server started with PID $PID_S"
 
@@ -82,9 +82,9 @@ if [ $DIFF_CODE_SUM -eq 0 ]
 then
 	RESULT="SUCCESS[  YAY!   ]"
 	# Package the SUCCESSFUL results
-	cp client.o pkg/tcp/.
-	cp server.o pkg/tcp/.
-	tar -zcvf pkg/tcp/$OUT_DIR.tar.gz $OUT_DIR
+	cp client.o pkg/tcp/tcp_client.o
+	cp server.o pkg/tcp/tcp_server.o
+	tar -zcvf pkg/tcp/tcp.$OUT_DIR.tar.gz $OUT_DIR
 elif [ $DIFF_CODE_SUM -eq 1 ]
 then
 	RESULT="FAILURE[DIFFERENT]"

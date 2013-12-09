@@ -23,7 +23,7 @@ mkdir out -p
 mkdir pkg -p
 mkdir pkg/udp -p
 rm out/* -rf
-rm pkg/*
+rm pkg/udp/*
 mkdir out/protocol-1 -p	# SAW
 mkdir out/protocol-2 -p # GBN
 
@@ -112,9 +112,9 @@ if [ $DIFF_CODE_SUM -eq 0 ]
 then
 	RESULT="SUCCESS[  YAY!   ]"
 	# Package the SUCCESSFUL results
-	cp client.o pkg/udp/.
-	cp server.o pkg/udp/.
-	tar -zcvf pkg/udp/$OUT_DIR.tar.gz $OUT_DIR
+	cp client.o pkg/udp/udp_client.o
+	cp server.o pkg/udp/udp_server.o
+	tar -zcvf pkg/udp/udp.$OUT_DIR.tar.gz $OUT_DIR
 elif [ $DIFF_CODE_SUM -eq 1 ]
 then
 	RESULT="FAILURE[DIFFERENT]"
