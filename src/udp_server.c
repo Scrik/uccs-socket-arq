@@ -52,25 +52,25 @@ int main(int argc, char **argv)
 
    printf("Using port=%d, drop_rate=%d, protocol=%d\n", port, dropRate, protocol);
       
-   /* Create a datagram socket */
-   if ((sd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-      printf("END [FAILURE] Can't create a socket\n");
-      exit(1);
-   }
-
-
-   /* Bind an address to the socket */
-   bzero((char *)&server, sizeof(server));
-   server.sin_family = AF_INET;
-   server.sin_port = htons(port);
-   server.sin_addr.s_addr = htonl(INADDR_ANY);
-   if (bind(sd, (struct sockaddr *)&server, 
-            sizeof(server)) == -1) {
-      printf("END [FAILURE] Can't bind name to socket\n");
-      exit(1);
-   }
 
    while (1) {
+     /* Create a datagram socket */
+     if ((sd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+        printf("END [FAILURE] Can't create a socket\n");
+        exit(1);
+     }
+
+
+     /* Bind an address to the socket */
+     bzero((char *)&server, sizeof(server));
+     server.sin_family = AF_INET;
+     server.sin_port = htons(port);
+     server.sin_addr.s_addr = htonl(INADDR_ANY);
+     if (bind(sd, (struct sockaddr *)&server, 
+              sizeof(server)) == -1) {
+        printf("END [FAILURE] Can't bind name to socket\n");
+        exit(1);
+     }
       client_len = sizeof(client);
 
       switch(protocol) {
@@ -121,7 +121,8 @@ int main(int argc, char **argv)
           return(1);
           break;
       }
+      printf("\n=============================== SERVER LOOP =================================\n\n");
+      close(sd);
    }
-   close(sd);
    return(0);
 }

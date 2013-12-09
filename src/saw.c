@@ -57,8 +57,9 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
    int bytes_sent = 0, bytes_left;
 
    // TIMEOUT_MS is in milliseconds
-   timeout.tv_usec = 1000*TIMEOUT_MS;
-   printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_usec/(1000), TIMEOUT_MS );
+   timeout.tv_sec = 5;
+   timeout.tv_usec = 0;
+   printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_sec*1000 + timeout.tv_usec/(1000), TIMEOUT_MS );
    // First, configure a TIMEOUT_MS
    if(setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, 
                   &timeout, sizeof(timeout) ) < 0){
@@ -66,7 +67,7 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
       return -1;
    }
 
-   for(i=0, j=0; i < num_frames; i++) {
+   for(i=0, j=0; i <= num_frames; i++) {
 
       bytes_left = bytes - bytes_sent;
       retries = 0;
@@ -79,8 +80,12 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
          printf("   START Send Frame: SEQ #%d, FRAMES %d, LEN %d B\n", a_frame.seq, a_frame.num_frames, a_frame.len);
          gettimeofday(&start, NULL); /* start delay measurement */
 
-         printf("      MEMCPY %d B @ index %d\n", a_frame.len, (i*data_size) );
-         memcpy(a_frame.data, (buf+(i*data_size)), a_frame.len );
+         if(i < num_frames) {
+            printf("      MEMCPY %d B @ index %d\n", a_frame.len, (i*data_size) );
+            memcpy(a_frame.data, (buf+(i*data_size)), a_frame.len );
+         } else {
+            printf("FIN!\n");
+         }
 
          r = 1 + (rand() % 100); // range of 1-100
          if( r > dropRate ) {
@@ -106,31 +111,35 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                n = recvfrom(sd, &an_ack, sizeof(an_ack), 0, 
                      (struct sockaddr *)&client, &client_len);
                if(n == -1) {
-                  gettimeofday(&end, NULL); /* end delay measurement */
+                  if(i < num_frames) {
+                     gettimeofday(&end, NULL); /* end delay measurement */
 
-                  time_diff = delay(start, end);
+                     time_diff = delay(start, end);
 
-                  printf("         INFO Time diff = %d\n", time_diff);
-                  if( TIMEOUT_MS < time_diff ) {
-                     printf(stderr, "      END [TIMEOUT] ACK receive error: %d - %s\n", errno, strerror(errno));
-                     if(retries < MAX_RETRIES) {
-                        printf("RETRY\n");
-                        retries++;
-                        continue;
+                     printf("         INFO Time diff = %d\n", time_diff);
+                     if( TIMEOUT_MS < time_diff ) {
+                        printf(stderr, "      END [TIMEOUT] ACK receive error: %d - %s\n", errno, strerror(errno));
+                        if(retries < MAX_RETRIES) {
+                           printf("RETRY\n");
+                           retries++;
+                           continue;
+                        } else {
+                           printf("      END [FAILURE] ACK maxed out retries\n");
+                           return -1;
+                        }
                      } else {
-                        printf("      END [FAILURE] ACK maxed out retries\n");
-                        return -1;
+                        printf("      END [FAILURE] ACK receive error: %d - %s\n", errno, strerror(errno));
+                        if(retries < MAX_RETRIES) {
+                           printf("RETRY\n");
+                           retries++;
+                           continue;
+                        } else {
+                           printf("      END [FAILURE] ACK maxed out retries\n");
+                           return -1;
+                        }
                      }
                   } else {
-                     printf("      END [FAILURE] ACK receive error: %d - %s\n", errno, strerror(errno));
-                     if(retries < MAX_RETRIES) {
-                        printf("RETRY\n");
-                        retries++;
-                        continue;
-                     } else {
-                        printf("      END [FAILURE] ACK maxed out retries\n");
-                        return -1;
-                     }
+                     printf("      END [ IGNORE] Error receiving FINACK: %d - %s\n", errno, strerror(errno));
                   }
                }
 printf(" ======> an_ack.len=%d, a_frame.len=%d\n", an_ack.len, a_frame.len );
@@ -183,11 +192,22 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
    struct timeval timeout;
    int time_diff=0, retries=0;
 
+   // TIMEOUT_MS is in milliseconds
+   // timeout.tv_sec = 5;
+   // timeout.tv_usec = 0;
+   // printf("   SET Socket timeout to %d ms (should be %d ms)\n", timeout.tv_sec*1000 + timeout.tv_usec/(1000), TIMEOUT_MS );
+   // // First, configure a TIMEOUT_MS
+   // if(setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, 
+   //                &timeout, sizeof(timeout) ) < 0){
+   //    printf("END [FAILURE] Error setting timeout. errno: %d - %s\n", errno, strerror(errno) );
+   //    return -1;
+   // }
+
    printf("START [SAW] Receive UDP\n");
 
    a_frame.seq = -1;
    i=0;
-   while(a_frame.seq+1 < num_frames) {
+   while(a_frame.seq+1 <= num_frames) {
 
       printf("   START Receive frame (should be SEQ #%d)\n", a_frame.seq+1);
       n = recvfrom(sd, &a_frame, sizeof(a_frame), 0, 
@@ -227,9 +247,13 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
          printf("      END Sent ACK #%d\n", a_frame.seq);
          /******************************************************/
 
-      printf("      MEMCPY %d B @ index %d\n", a_frame.len, (a_frame.seq*(*data_size)) );
-      memcpy((buf+(a_frame.seq*(*data_size))), a_frame.data, *data_size);
-      bytes_recvd += a_frame.len;
+      if(a_frame.seq < num_frames) {
+         printf("      MEMCPY %d B @ index %d\n", a_frame.len, (a_frame.seq*(*data_size)) );
+         memcpy((buf+(a_frame.seq*(*data_size))), a_frame.data, *data_size);
+         bytes_recvd += a_frame.len;
+      } else {
+         printf("FIN!\n");
+      }
       printf("   END Received frame with result: %d, SEQ #%d, FRAMES %d, LEN %d\n", n, seq, num_frames, a_frame.len);
    }
 
