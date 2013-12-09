@@ -208,6 +208,7 @@ int send_saw(int client_len, struct sockaddr_in client, int sd, char *buf, int n
                      printf("      END [ HMM.. ] ACK receive error: expected ACK #%d, got FRAME #%d\n", a_frame.seq, an_ack.seq);
                   }
                printf("      END Got ACK #%d (FRAME #%d)\n", an_ack.seq, a_frame.seq++);
+               retries = 0;   // restart the retry counter
                if(an_ack.seq >= num_frames) {
                   printf("FIN! #%d\n", an_ack.seq);
                   // i = a_frame.seq;
@@ -256,6 +257,11 @@ int receive_saw(int *client_len, struct sockaddr_in *client, int sd, char *buf, 
             (struct sockaddr *)client, client_len);
       if(n == -1) {
          printf("   END [FAILURE] Frame receive error: %d - %s\n", errno, strerror(errno));
+         if(retries > 15) {
+            // Forget it, maybe it worked!
+            break;
+         }
+         retries++;
          continue;   // Try again
          // return -1;
       }
