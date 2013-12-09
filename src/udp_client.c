@@ -49,31 +49,25 @@ int main(int argc, char **argv)
     if (argc > 0) {
        host = *argv;
        if (--argc > 0) {
-          printf("argv1 = %s\n", *argv);
         if(strcmp(*++argv, "-p") == 0) {
-          printf("argv = %s\n", *argv);
           port = atoi(*++argv);
           argc -= 2;
         } else {
           argv--;
         }
        } else {
-        printf("b\n");
         print_usage(pname);
         exit(1);
        }
-       printf("size %d, host %s, port %d\n", data_size, host, port);
        if(argc == 3) {
         src_filename = *++argv;
         dst_filename = *++argv;
         protocol = atoi(*++argv);
        } else {
-        printf("c %d\n", argc);
         print_usage(pname);
         exit(1);
        }
     } else {
-        printf("d\n");
        print_usage(pname);
        exit(1);
     }
