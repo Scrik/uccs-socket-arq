@@ -4,7 +4,8 @@
 #define DEFLEN                  64
 #define MAX_PRINT_BUF			1024
 #define TIMEOUT_MS  			50 		// Timeout in millisec
-#define GBN_TIMEOUT   			1 		// Timeout in seconds
+#define GBN_TIMER     			1 		// Time after which to process ACKs
+#define GBN_TIMEOUT_MS			500		// Timeout (ms) for each datagram (should be short)
 #define GBN_WINDOW_SIZE			5 		// How many outstanding frames are allowed?
 #define MAX_RETRIES				15
 
