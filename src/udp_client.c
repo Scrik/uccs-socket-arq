@@ -112,11 +112,15 @@ printf("SEND: '%05d,%s'\n", data_size, src_filename);
         printf("END Received file.\n");
         break;
       case GO_BACK_N:
+        printf("START Request file '%s' from server...\n", src_filename);
         if( -1 == send_gbn(server_len, server, sd, sbuf, num_frames, data_size, bytes, 0)) {
-          printf("END [FAILURE] Error sending via UDP\n");
+          printf("END [FAILURE] Error requestion file. Errno: %d - %s\n", errno, strerror(errno));
           return(1);
         }
+        printf("END [SUCCESS] Server knows what we want.\n");
+        printf("START Receive file...\n");
         bytes = receive_gbn(&server_len, &server, sd, rbuf, &data_size, 0);
+        printf("END Received file.\n");
         break;
       case SELECTIVE_REPEAT:
         printf("END [FAILURE] SELECTIVE REPEAT not implemented\n");
